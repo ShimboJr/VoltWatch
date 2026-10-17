@@ -111,8 +111,8 @@ export const auth = {
 // ── Status / live data ────────────────────────────────────────
 
 export const status = {
-  get:  (deviceId)      => api.get(`/status/${deviceId}`),
-  list: ()              => api.get('/status'),
+  // Correct backend route: GET /api/v1/devices/:id/status
+  get: (deviceId) => api.get(`/devices/${deviceId}/status`),
 };
 
 // ── Alerts ───────────────────────────────────────────────────

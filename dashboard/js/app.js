@@ -210,7 +210,10 @@ async function boot() {
 }
 
 // ─── Dismiss loader ───────────────────────────────────────
+let _loaderDismissed = false;
 function _dismissLoader() {
+  if (_loaderDismissed) return;
+  _loaderDismissed = true;
   document.body.classList.remove('app-loading');
   const loader = document.getElementById('app-loader');
   if (!loader) return;
@@ -218,9 +221,19 @@ function _dismissLoader() {
   setTimeout(() => loader.remove(), 260);
 }
 
+// Show a hint after 3 s if backend is cold-starting
+setTimeout(() => {
+  const hint = document.getElementById('app-loader-hint');
+  if (hint && !_loaderDismissed) hint.style.display = '';
+}, 3000);
+
+// Hard safety cap: dismiss loader after 10 s regardless
+const _loaderTimeout = setTimeout(_dismissLoader, 10_000);
+
 boot()
-  .then(_dismissLoader)
+  .then(() => { clearTimeout(_loaderTimeout); _dismissLoader(); })
   .catch(err => {
+    clearTimeout(_loaderTimeout);
     console.error('[VoltWatch] Boot error:', err);
     _dismissLoader();
     router.start(); // Start anyway (will redirect to login)

@@ -109,7 +109,7 @@ function _schedulePoll(delay = POLL_INTERVAL_MS) {
 }
 
 async function _doPoll() {
-  if (_stopped || document.hidden) return;
+  if (_stopped || document.hidden || !_deviceId) return;
   try {
     const [statusData, alertsData] = await Promise.all([
       status.get(_deviceId),
