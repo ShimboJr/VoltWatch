@@ -36,8 +36,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <!-- Backend API URL (overridable via Vercel env or window global) -->
-  <script>window.VOLTWATCH_API = window.VOLTWATCH_API || '/api/v1';</script>
+  <!-- Backend API URL (overridable via window.VOLTWATCH_API before this loads) -->
+  <script src="js/config.js"></script>
 
   <!-- Chart.js 4.4 (pinned) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
