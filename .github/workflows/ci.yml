@@ -123,7 +123,11 @@ jobs:
           OWNER_PASSWORD_HASH: $argon2id$v=19$m=65536,t=3,p=4$Y2ktc2FsdC1mb3ItY2k$fakeHashReplacedByBootstrap
           APP_ORIGIN: http://localhost:3000
           LOG_LEVEL: warn
-        run: node src/server.js &
+          # Dummy VAPID keys to silence the "Web Push disabled" warning in CI
+          VAPID_PUBLIC_KEY: BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U
+          VAPID_PRIVATE_KEY: UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKc-ls
+        run: |
+          node src/server.js &
           sleep 5
           curl -sf http://localhost:3001/api/v1/health || (echo "Backend health check failed" && exit 1)
 
