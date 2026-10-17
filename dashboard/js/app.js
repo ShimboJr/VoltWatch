@@ -134,11 +134,47 @@ async function boot() {
   // Register service worker (PWA + push)
   registerSW().catch(() => {});
 
-  // Apply stored theme
+  // Apply stored theme immediately
   const theme = localStorage.getItem('vw-theme') || 'dark';
   applyTheme(theme);
 
-  // Try to restore session
+  // ── Wire up UI event listeners (don't need auth) ─────────────
+  document.getElementById('device-select')?.addEventListener('change', (e) => {
+    window.switchDevice(e.target.value);
+  });
+
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    try { await auth.logout(); } catch { /* ignore */ }
+    _authed = false;
+    store.set('user', null);
+    store.set('devices', []);
+    poller.stop();
+    document.getElementById('btn-glance-shortcut')?.style &&
+      (document.getElementById('btn-glance-shortcut').style.display = 'none');
+    router.go('#/login');
+  });
+
+  // ── Start router & dismiss loader immediately ─────────────────
+  // Router shows #/login right away (since _authed is still false).
+  // We don't block on network — the auth check below will navigate
+  // to #/live if the session is valid.
+  router.start();
+  _dismissLoader();
+
+  // ── Dead-man health poll ──────────────────────────────────────
+  (function startDeadManPoll() {
+    async function checkHealth() {
+      try {
+        const h = await fetch('/api/v1/health').then(r => r.json());
+        const banner = document.getElementById('dead-man-banner');
+        if (banner) banner.style.display = h.deadManWarning ? '' : 'none';
+      } catch { /* backend unreachable — offline-banner handles this via SW */ }
+    }
+    checkHealth();
+    setInterval(checkHealth, 5 * 60 * 1000);
+  })();
+
+  // ── Try to restore session (runs after UI is already visible) ─
   try {
     const me = await auth.me();
     _authed = true;
@@ -171,42 +207,13 @@ async function boot() {
     const glanceBtn = document.getElementById('btn-glance-shortcut');
     if (glanceBtn) glanceBtn.style.display = '';
 
+    // Navigate to live page now that session is confirmed
+    router.go('#/live');
+
   } catch {
+    // Not authenticated — router is already at #/login, nothing more to do
     _authed = false;
   }
-
-  // Device switcher change
-  document.getElementById('device-select')?.addEventListener('change', (e) => {
-    window.switchDevice(e.target.value);
-  });
-
-  // Logout button
-  document.getElementById('btn-logout')?.addEventListener('click', async () => {
-    try { await auth.logout(); } catch { /* ignore */ }
-    _authed = false;
-    store.set('user', null);
-    store.set('devices', []);
-    poller.stop();
-    document.getElementById('btn-glance-shortcut')?.style &&
-      (document.getElementById('btn-glance-shortcut').style.display = 'none');
-    router.go('#/login');
-  });
-
-  // Dead-man health poll: check /api/v1/health every 5 min; show banner if no readings recently
-  (function startDeadManPoll() {
-    async function checkHealth() {
-      try {
-        const h = await fetch('/api/v1/health').then(r => r.json());
-        const banner = document.getElementById('dead-man-banner');
-        if (banner) banner.style.display = h.deadManWarning ? '' : 'none';
-      } catch { /* backend unreachable — offline-banner handles this via SW */ }
-    }
-    checkHealth();
-    setInterval(checkHealth, 5 * 60 * 1000);
-  })();
-
-  // Start router
-  router.start();
 }
 
 // ─── Dismiss loader ───────────────────────────────────────
@@ -221,20 +228,13 @@ function _dismissLoader() {
   setTimeout(() => loader.remove(), 260);
 }
 
-// Show a hint after 3 s if backend is cold-starting
+// Show a hint after 3 s if backend is still loading the session in background
 setTimeout(() => {
   const hint = document.getElementById('app-loader-hint');
   if (hint && !_loaderDismissed) hint.style.display = '';
 }, 3000);
 
-// Hard safety cap: dismiss loader after 10 s regardless
-const _loaderTimeout = setTimeout(_dismissLoader, 10_000);
-
-boot()
-  .then(() => { clearTimeout(_loaderTimeout); _dismissLoader(); })
-  .catch(err => {
-    clearTimeout(_loaderTimeout);
-    console.error('[VoltWatch] Boot error:', err);
-    _dismissLoader();
-    router.start(); // Start anyway (will redirect to login)
-  });
+boot().catch(err => {
+  console.error('[VoltWatch] Boot error:', err);
+  _dismissLoader();
+});
