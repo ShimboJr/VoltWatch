@@ -1,0 +1,14 @@
+{
+  "name": "voltwatch",
+  "version": "1.0.0",
+  "description": "VoltWatch — laptop power monitor for unattended trading systems",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sim": "node tools/simulator/simulate.js",
+    "seed": "node tools/simulator/seed.js",
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:start": "npm --prefix backend start",
+    "backend:test": "npm --prefix backend test"
+  }
+}

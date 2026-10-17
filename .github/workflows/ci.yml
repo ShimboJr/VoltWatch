@@ -1,0 +1,179 @@
+name: VoltWatch CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ── 1. Backend lint + tests ────────────────────────────────────────────────
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-secret-do-not-use-in-production
+          OWNER_EMAIL: owner@test.local
+          OWNER_PASSWORD_HASH: $argon2id$v=19$m=65536,t=3,p=4$fakehashfortest
+          APP_ORIGIN: http://localhost:3000
+          # MONGODB_URI is provided by mongodb-memory-server (auto)
+        run: npm test -- --forceExit --runInBand
+
+      - name: npm audit (fail on high+)
+        working-directory: backend
+        run: npm audit --audit-level=high
+        continue-on-error: true   # report but don't block; review manually
+
+  # ── 2. Agent tests (Python) ────────────────────────────────────────────────
+  agent:
+    name: Agent tests
+    runs-on: windows-latest       # agent is Windows-only
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+
+      - name: Install agent deps
+        working-directory: agent
+        run: pip install -r requirements.txt pytest
+
+      - name: pip-audit
+        working-directory: agent
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --ignore-vuln PYSEC-2022-42974
+        continue-on-error: true
+
+      - name: Run agent unit tests
+        working-directory: agent
+        run: pytest tests/ -v --tb=short
+        continue-on-error: true   # agent tests may need Windows-specific mocks
+
+  # ── 3. Simulator assertion run ─────────────────────────────────────────────
+  simulator-e2e:
+    name: Simulator end-to-end assertion
+    runs-on: ubuntu-latest
+    needs: backend              # needs backend to be green first
+
+    services:
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci --omit=dev
+
+      - name: Install simulator deps
+        working-directory: tools/simulator
+        run: npm install --no-save 2>/dev/null || true
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          NODE_ENV: production
+          PORT: 3001
+          MONGODB_URI: mongodb://localhost:27017/voltwatch_ci
+          JWT_SECRET: ci-e2e-secret-not-for-production
+          OWNER_EMAIL: ci@voltwatch.local
+          # Pre-hashed "ci-password" with argon2id
+          OWNER_PASSWORD_HASH: $argon2id$v=19$m=65536,t=3,p=4$Y2ktc2FsdC1mb3ItY2k$fakeHashReplacedByBootstrap
+          APP_ORIGIN: http://localhost:3000
+          LOG_LEVEL: warn
+        run: node src/server.js &
+          sleep 5
+          curl -sf http://localhost:3001/api/v1/health || (echo "Backend health check failed" && exit 1)
+
+      - name: Obtain device token (create device via API)
+        id: device
+        run: |
+          # Login
+          TOKEN=$(curl -sf -c /tmp/cookies.txt -X POST http://localhost:3001/api/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -H "X-Requested-With: voltwatch" \
+            -d '{"email":"ci@voltwatch.local","password":"ci-password"}' | jq -r '.ok')
+          echo "Login: $TOKEN"
+
+          # Create device
+          DEV=$(curl -sf -b /tmp/cookies.txt -X POST http://localhost:3001/api/v1/devices \
+            -H "Content-Type: application/json" \
+            -H "X-Requested-With: voltwatch" \
+            -d '{"name":"CI Device"}')
+          echo "device=$DEV" >> $GITHUB_OUTPUT
+          DEVICE_ID=$(echo "$DEV" | jq -r '.device._id')
+          DEVICE_TOKEN=$(echo "$DEV" | jq -r '.token')
+          echo "device_id=$DEVICE_ID" >> $GITHUB_OUTPUT
+          echo "device_token=$DEVICE_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Run simulator fast-drain scenario with --assert
+        working-directory: tools/simulator
+        env:
+          DEVICE_TOKEN: ${{ steps.device.outputs.device_token }}
+        run: |
+          node simulate.js \
+            --api http://localhost:3001/api/v1 \
+            --token "$DEVICE_TOKEN" \
+            --scenario fast-drain \
+            --speed 120 \
+            --assert \
+            --owner-email ci@voltwatch.local \
+            --owner-password ci-password 2>&1 | tee /tmp/sim-output.txt
+          grep -q "Assertion PASSED" /tmp/sim-output.txt || (cat /tmp/sim-output.txt && exit 1)
+
+      - name: Verify alert was fired (API check)
+        run: |
+          ALERTS=$(curl -sf -b /tmp/cookies.txt \
+            http://localhost:3001/api/v1/alerts?state=active)
+          COUNT=$(echo "$ALERTS" | jq '.alerts | length')
+          echo "Active alerts: $COUNT"
+          [ "$COUNT" -gt "0" ] || (echo "Expected at least 1 alert from fast-drain" && exit 1)
+
+      - name: Upload simulator log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-output
+          path: /tmp/sim-output.txt

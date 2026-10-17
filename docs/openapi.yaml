@@ -1,0 +1,877 @@
+openapi: 3.1.0
+info:
+  title: VoltWatch API
+  version: 1.0.0
+  description: |
+    Power monitoring backend for a remote Windows laptop running MetaTrader 5.
+
+    Two authentication schemes:
+    - **Agent** routes: `Authorization: Bearer <deviceToken>` (32-byte random, base64url)
+    - **Dashboard** routes: `session` httpOnly cookie (JWT). All mutating requests also require
+      `X-Requested-With: voltwatch` header.
+
+servers:
+  - url: https://your-api-host.com/api/v1
+    description: Production
+  - url: http://localhost:3001/api/v1
+    description: Local development
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Devices
+  - name: Agent
+  - name: Alerts
+  - name: Settings
+  - name: Stream
+
+# ─── Reusable components ──────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    AgentToken:
+      type: http
+      scheme: bearer
+      description: Device bearer token (shown once on device creation)
+
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: INVALID_TOKEN
+            message:
+              type: string
+              example: Invalid device token
+
+    LastReading:
+      type: object
+      properties:
+        percent: { type: number, minimum: 0, maximum: 100 }
+        charging: { type: boolean }
+        acConnected: { type: boolean }
+        secsLeft: { type: number, nullable: true }
+        mt5Running: { type: boolean }
+        deviceTime: { type: string, format: date-time }
+        serverTime: { type: string, format: date-time }
+
+    Device:
+      type: object
+      properties:
+        _id: { type: string }
+        name: { type: string }
+        hostname: { type: string, nullable: true }
+        os: { type: string, nullable: true }
+        agentVersion: { type: string, nullable: true }
+        tokenRotatedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        alertsPaused: { type: boolean }
+        currentCycleId: { type: integer }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+        plannedStopUntil: { type: string, format: date-time, nullable: true }
+        lastReading:
+          allOf: [ { $ref: '#/components/schemas/LastReading' } ]
+          nullable: true
+
+    DeviceStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ONLINE, STALE, OFFLINE, PLANNED_STOP, NEVER_SEEN]
+        power:
+          type: string
+          enum: [CHARGING, PLUGGED_NOT_CHARGING, ON_BATTERY, UNKNOWN]
+        severity:
+          type: string
+          enum: [ok, info, warning, critical, unknown]
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+        lastReading:
+          allOf: [ { $ref: '#/components/schemas/LastReading' } ]
+          nullable: true
+        predictedEmptyAt: { type: string, format: date-time, nullable: true }
+        trendSecsLeft: { type: number, nullable: true }
+        windowsSecsLeft: { type: number, nullable: true }
+        diagnosis:
+          type: object
+          nullable: true
+          properties:
+            likelyCause: { type: string }
+            confidence:
+              type: string
+              enum: [likely, possible]
+            reasons:
+              type: array
+              items: { type: string }
+
+    ReadingPoint:
+      type: object
+      properties:
+        t: { type: string, format: date-time }
+        percent: { type: number }
+        acConnected: { type: boolean, nullable: true }
+        charging: { type: boolean, nullable: true }
+        mt5Running: { type: boolean, nullable: true }
+
+    Gap:
+      type: object
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+
+    PowerEvent:
+      type: object
+      properties:
+        _id: { type: string }
+        deviceId: { type: string }
+        type:
+          type: string
+          enum:
+            - AC_DISCONNECTED
+            - AC_RECONNECTED
+            - LOW_BATTERY
+            - HEARTBEAT_LOST
+            - HEARTBEAT_RECOVERED
+            - AGENT_STARTED
+            - AGENT_STOPPED_PLANNED
+            - SYSTEM_SHUTDOWN
+            - RESUMED_FROM_SLEEP
+            - UNEXPECTED_SHUTDOWN
+            - MT5_STARTED
+            - MT5_STOPPED
+        at: { type: string, format: date-time }
+        percent: { type: number, nullable: true }
+        meta: { type: object }
+        cycleId: { type: integer }
+
+    Alert:
+      type: object
+      properties:
+        _id: { type: string }
+        deviceId: { type: string }
+        type: { type: string }
+        severity:
+          type: string
+          enum: [info, warning, high, critical]
+        level: { type: integer, nullable: true }
+        cycleId: { type: integer, nullable: true }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+        state:
+          type: string
+          enum: [active, acknowledged, resolved]
+        acknowledgedAt: { type: string, format: date-time, nullable: true }
+        snoozedUntil: { type: string, format: date-time, nullable: true }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+        lastRepeatAt: { type: string, format: date-time, nullable: true }
+        dedupeKey: { type: string, nullable: true }
+
+    Settings:
+      type: object
+      properties:
+        thresholds:
+          type: array
+          items: { type: integer, minimum: 1, maximum: 99 }
+          description: Battery thresholds in descending order (e.g. [50,30,20,15])
+        criticalLevel: { type: integer, minimum: 1, maximum: 99 }
+        criticalRepeatMin: { type: integer, minimum: 1, maximum: 60 }
+        offlineAfterSec: { type: integer, minimum: 60, maximum: 900 }
+        staleAfterSec: { type: integer, minimum: 30, maximum: 300 }
+        intervalSec: { type: integer, minimum: 30, maximum: 60 }
+        mt5Alert: { type: boolean }
+        mt5DebounceSec: { type: integer }
+        quietHours:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            from: { type: string, example: "23:00" }
+            to: { type: string, example: "06:00" }
+        alarmSound: { type: string }
+        alarmVolume: { type: number, minimum: 0, maximum: 1 }
+        vibrate: { type: boolean }
+        theme: { type: string, enum: [dark, light] }
+        timeZone: { type: string, example: Africa/Lagos }
+        retentionDays: { type: integer, minimum: 7, maximum: 365 }
+        configVersion: { type: integer }
+
+    HeartbeatPayload:
+      type: object
+      required:
+        - readingId
+        - deviceTime
+        - kind
+        - event
+        - percent
+        - charging
+        - acConnected
+        - mt5Running
+        - uptimeSec
+        - agentVersion
+        - hostname
+      properties:
+        readingId: { type: string, format: uuid }
+        deviceTime: { type: string, format: date-time }
+        kind: { type: string, enum: [heartbeat, event] }
+        event:
+          type: string
+          nullable: true
+          enum:
+            - ac_connected
+            - ac_disconnected
+            - agent_started
+            - agent_stopping_planned
+            - system_shutdown
+            - resumed_from_sleep
+            - unexpected_shutdown_detected
+            - mt5_started
+            - mt5_stopped
+        percent: { type: number, minimum: 0, maximum: 100 }
+        charging: { type: boolean }
+        acConnected: { type: boolean }
+        secsLeft: { type: number, nullable: true }
+        mt5Running: { type: boolean }
+        uptimeSec: { type: number, minimum: 0 }
+        internetLatencyMs: { type: number, nullable: true }
+        agentVersion: { type: string }
+        hostname: { type: string }
+        meta: { type: object }
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Health ────────────────────────────────────────────────────────────────
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Public health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: API and DB are healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  time: { type: string, format: date-time }
+                  db: { type: string }
+        '503':
+          description: Database is not connected
+
+  # ── Auth ─────────────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      operationId: login
+      security: []
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful; session cookie set
+          headers:
+            Set-Cookie:
+              description: httpOnly session JWT cookie
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: CSRF header missing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Account locked or rate limited
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (clears session cookie)
+      operationId: logout
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      responses:
+        '200':
+          description: Logged out
+        '401':
+          description: Not authenticated
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      operationId: getMe
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Current user (without sensitive fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      _id: { type: string }
+                      email: { type: string }
+                      settings: { $ref: '#/components/schemas/Settings' }
+                      createdAt: { type: string, format: date-time }
+        '401':
+          description: Not authenticated
+
+  # ── Devices ───────────────────────────────────────────────────────────────
+
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List all devices
+      operationId: listDevices
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: List of devices (tokenHash excluded)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items: { $ref: '#/components/schemas/Device' }
+        '401':
+          description: Not authenticated
+
+    post:
+      tags: [Devices]
+      summary: Create a new device and return its token (shown once)
+      operationId: createDevice
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '201':
+          description: Device created; token shown only once
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device: { $ref: '#/components/schemas/Device' }
+                  token:
+                    type: string
+                    description: Plaintext bearer token — store securely, shown only once
+        '401': { description: Not authenticated }
+        '403': { description: CSRF header missing }
+        '422': { description: Validation error }
+
+  /devices/{id}:
+    patch:
+      tags: [Devices]
+      summary: Update device name or alertsPaused
+      operationId: patchDevice
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                alertsPaused: { type: boolean }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device: { $ref: '#/components/schemas/Device' }
+        '404': { description: Device not found }
+
+    delete:
+      tags: [Devices]
+      summary: Delete device and cascade readings, events, alerts
+      operationId: deleteDevice
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '404': { description: Device not found }
+
+  /devices/{id}/rotate-token:
+    post:
+      tags: [Devices]
+      summary: Rotate the device bearer token; old token immediately invalidated
+      operationId: rotateToken
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: New plaintext token — shown once
+        '404': { description: Device not found }
+
+  /devices/{id}/status:
+    get:
+      tags: [Devices]
+      summary: Get derived status for a device
+      operationId: getDeviceStatus
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceStatus' }
+        '404': { description: Device not found }
+
+  /devices/{id}/readings:
+    get:
+      tags: [Devices]
+      summary: Get downsampled readings (≤300 points)
+      operationId: getDeviceReadings
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: range
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: 24h
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points:
+                    type: array
+                    items: { $ref: '#/components/schemas/ReadingPoint' }
+                  gaps:
+                    type: array
+                    items: { $ref: '#/components/schemas/Gap' }
+        '404': { description: Device not found }
+        '422': { description: Invalid range value }
+
+  /devices/{id}/events:
+    get:
+      tags: [Devices]
+      summary: Get paginated power events for a device
+      operationId: getDeviceEvents
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 100 }
+        - in: query
+          name: before
+          schema: { type: string, format: date-time }
+          description: Return events before this ISO timestamp (for pagination)
+        - in: query
+          name: types
+          schema: { type: string }
+          description: Comma-separated list of event types to filter by
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/PowerEvent' }
+        '404': { description: Device not found }
+
+  /devices/{id}/insights:
+    get:
+      tags: [Devices]
+      summary: Get usage insights for a device (stub — implemented in a later prompt)
+      operationId: getDeviceInsights
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: range
+          schema: { type: string, default: 7d }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights: { type: array, items: {} }
+
+  # ── Agent ─────────────────────────────────────────────────────────────────
+
+  /agent/heartbeat:
+    post:
+      tags: [Agent]
+      summary: Submit a heartbeat or event reading from the agent
+      operationId: agentHeartbeat
+      security:
+        - AgentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HeartbeatPayload' }
+      responses:
+        '200':
+          description: Accepted (or duplicate if readingId already seen)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      serverTime: { type: string, format: date-time }
+                      config:
+                        type: object
+                        properties:
+                          intervalSec: { type: integer }
+                          configVersion: { type: integer }
+                  - type: object
+                    properties:
+                      duplicate: { type: boolean, enum: [true] }
+        '401': { description: Invalid or missing bearer token }
+        '422': { description: Validation error or invalid deviceTime }
+        '429': { description: Rate limit exceeded (10 req/min per token) }
+
+  /agent/batch:
+    post:
+      tags: [Agent]
+      summary: Upload offline reading queue (up to 500 items)
+      operationId: agentBatch
+      security:
+        - AgentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readings]
+              properties:
+                readings:
+                  type: array
+                  items: { $ref: '#/components/schemas/HeartbeatPayload' }
+                  minItems: 1
+                  maxItems: 500
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed: { type: integer }
+                  duplicates: { type: integer }
+                  errors: { type: integer }
+                  serverTime: { type: string, format: date-time }
+        '401': { description: Invalid token }
+        '422': { description: Validation error }
+
+  # ── Alerts ────────────────────────────────────────────────────────────────
+
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: List alerts
+      operationId: listAlerts
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: query
+          name: state
+          schema:
+            type: string
+            enum: [active, all]
+            default: active
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items: { $ref: '#/components/schemas/Alert' }
+
+  /alerts/test:
+    post:
+      tags: [Alerts]
+      summary: Create a harmless test alert to verify the notification pipeline
+      operationId: createTestAlert
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alert: { $ref: '#/components/schemas/Alert' }
+
+  /alerts/{id}/ack:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge an alert (stops repeats)
+      operationId: ackAlert
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alert: { $ref: '#/components/schemas/Alert' }
+        '404': { description: Alert not found }
+
+  /alerts/{id}/snooze:
+    post:
+      tags: [Alerts]
+      summary: Snooze an alert for a number of minutes
+      operationId: snoozeAlert
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [minutes]
+              properties:
+                minutes: { type: integer, minimum: 1, maximum: 1440 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alert: { $ref: '#/components/schemas/Alert' }
+        '404': { description: Alert not found }
+        '422': { description: Validation error }
+
+  # ── Settings ─────────────────────────────────────────────────────────────
+
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Get owner settings
+      operationId: getSettings
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: '#/components/schemas/Settings' }
+
+    put:
+      tags: [Settings]
+      summary: Update owner settings (partial update supported)
+      operationId: putSettings
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema: { type: string, enum: [voltwatch] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Settings' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: '#/components/schemas/Settings' }
+        '422': { description: Validation error }
+
+  # ── Stream ────────────────────────────────────────────────────────────────
+
+  /stream:
+    get:
+      tags: [Stream]
+      summary: Server-Sent Events stream for real-time dashboard updates
+      operationId: getStream
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: SSE stream; events are `status`, `alert`, `event`
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Newline-delimited SSE frames.
+                  Event types: `status` (DeviceStatus), `alert` (Alert), `event` (PowerEvent)
+        '401': { description: Not authenticated }
