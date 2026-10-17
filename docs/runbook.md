@@ -133,7 +133,7 @@ VoltWatch runs all background jobs (offline watcher, critical repeat, rollup) in
 ### 3e. Verify deployment
 
 ```bash
-curl https://your-backend.onrender.com/api/v1/health
+curl https://voltwatch-69ie.onrender.com/api/v1/health
 # → {"ok":true,"db":"connected","lastReadingAt":null,...}
 ```
 
@@ -161,7 +161,7 @@ The `dashboard/vercel.json` handles:
 
 **Update the rewrite destination:**
 ```json
-{ "source": "/api/(.*)", "destination": "https://your-backend.onrender.com/api/$1" }
+{ "source": "/api/(.*)", "destination": "https://voltwatch-69ie.onrender.com/api/$1" }
 ```
 
 ### 4c. Content Security Policy
@@ -171,7 +171,7 @@ Add to `vercel.json` headers for `/(.*)`  (the default rule already sets securit
 ```json
 {
   "key": "Content-Security-Policy",
-  "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://your-backend.onrender.com; img-src 'self' data:; frame-ancestors 'none'; upgrade-insecure-requests"
+  "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://voltwatch-69ie.onrender.com; img-src 'self' data:; frame-ancestors 'none'; upgrade-insecure-requests"
 }
 ```
 
@@ -190,7 +190,7 @@ Vercel assigns `your-voltwatch.vercel.app` automatically. To use a custom domain
 
 - The agent's `--api` URL should point to:
   - **Option A (recommended):** The Vercel dashboard URL `https://your-voltwatch.vercel.app/api/v1` — Vercel proxies to the backend, so you only expose one domain.
-  - **Option B:** The Render backend directly `https://your-backend.onrender.com/api/v1`.
+  - **Option B:** The Render backend directly `https://voltwatch-69ie.onrender.com/api/v1`.
 - HTTPS is mandatory for the service worker and Web Push (PWA prompt 09).
 - Never run the backend on plain HTTP in production.
 

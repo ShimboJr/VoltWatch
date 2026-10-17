@@ -60,7 +60,7 @@ def show_pairing_dialog(
 
     tk.Label(frame, text="Backend API URL:", bg=BG, fg=FG).grid(
         row=1, column=0, sticky="w", pady=4)
-    url_var = tk.StringVar(value="http://localhost:3001/api/v1")
+    url_var = tk.StringVar(value="https://voltwatch-69ie.onrender.com/api/v1")
     url_entry = tk.Entry(frame, textvariable=url_var, width=44,
                          bg=ENTRY_BG, fg=FG, insertbackground=FG,
                          relief="flat", bd=6)

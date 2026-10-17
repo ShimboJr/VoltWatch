@@ -11,7 +11,7 @@ info:
       `X-Requested-With: voltwatch` header.
 
 servers:
-  - url: https://your-api-host.com/api/v1
+  - url: https://voltwatch-69ie.onrender.com/api/v1
     description: Production
   - url: http://localhost:3001/api/v1
     description: Local development
