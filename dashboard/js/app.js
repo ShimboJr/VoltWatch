@@ -95,9 +95,10 @@ router
   .on('#/devices', () => {
     showPage('page-devices');
     initDevicesPage();
-    // Wire wizard backdrop
+    // Wire wizard backdrop close
     document.getElementById('devices-wizard-backdrop')?.addEventListener('click', () => {
       document.getElementById('devices-wizard')?.classList.remove('open');
+      document.getElementById('devices-wizard-backdrop')?.classList.remove('visible');
     }, { once: true });
   })
   .on('#/settings', () => {

@@ -306,21 +306,29 @@ function _openWizard() {
   _wizardStep = 1;
   _wizardDevice = null;
   _stopHeartbeatPoll();
-  document.getElementById('devices-wizard')?.classList.add('active');
-  document.getElementById('wizard-name-input').value = '';
+  document.getElementById('devices-wizard')?.classList.add('open');
+  document.getElementById('devices-wizard-backdrop')?.classList.add('visible');
+  const nameInput = document.getElementById('wizard-name-input');
+  if (nameInput) nameInput.value = '';
+  document.getElementById('wizard-name-error')?.replaceChildren();
   _showWizardStep(1);
 }
 
 function _closeWizard() {
   _stopHeartbeatPoll();
-  document.getElementById('devices-wizard')?.classList.remove('active');
+  document.getElementById('devices-wizard')?.classList.remove('open');
+  document.getElementById('devices-wizard-backdrop')?.classList.remove('visible');
 }
 
 function _showWizardStep(n) {
   for (let i = 1; i <= 3; i++) {
-    document.getElementById(`wizard-step-${i}`)?.classList.toggle('active', i === n);
+    const el = document.getElementById(`wizard-step-${i}`);
+    if (!el) continue;
+    const show = i === n;
+    el.style.display = show ? '' : 'none';
+    el.classList.toggle('active', show);
   }
-  // Dots
+  // Step indicator dots
   document.querySelectorAll('.wizard-dot').forEach((dot, i) => {
     dot.classList.toggle('active', i + 1 === n);
     dot.classList.toggle('done', i + 1 < n);
