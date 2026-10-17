@@ -14,7 +14,7 @@ import { Router } from 'express';
 import { z }      from 'zod';
 import webpush    from 'web-push';
 
-import { requireAuth }       from '../middleware/requireAuth.js';
+import { requireAuth }       from '../middleware/authSession.js';
 import { PushSubscription }  from '../models/PushSubscription.js';
 import { buildPayload }      from '../services/notifier/webPush.js';
 import config                from '../config/index.js';
