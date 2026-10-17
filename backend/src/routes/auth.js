@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/authSession.js';
 import { validate } from '../middleware/validate.js';
+import { loginRateLimit } from '../middleware/rateLimiter.js';
 import config from '../config/index.js';
 
 const router = Router();
@@ -18,7 +19,7 @@ const loginSchema = z.object({
 });
 
 // ── POST /api/v1/auth/login ──────────────────────────────────────────────────
-router.post('/login', validate(loginSchema), async (req, res, next) => {
+router.post('/login', loginRateLimit, validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email.toLowerCase() });

@@ -6,7 +6,7 @@ import pinoHttp from 'pino-http';
 
 import { logger } from './middleware/logger.js';
 import { csrfMiddleware } from './middleware/csrf.js';
-import { loginRateLimit, dashboardRateLimit } from './middleware/rateLimiter.js';
+import { dashboardRateLimit } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { sanitizeBody } from './middleware/sanitize.js';
 
@@ -55,7 +55,7 @@ export function createApp() {
   app.use('/api/v1/agent', agentRouter);
 
   // ── Dashboard routes (cookie auth + CSRF on mutating methods) ─────────────
-  app.use('/api/v1/auth', csrfMiddleware, loginRateLimit, authRouter);
+  app.use('/api/v1/auth', csrfMiddleware, dashboardRateLimit, authRouter);
   app.use('/api/v1/devices', csrfMiddleware, dashboardRateLimit, devicesRouter);
   app.use('/api/v1/settings', csrfMiddleware, dashboardRateLimit, settingsRouter);
   app.use('/api/v1/alerts', csrfMiddleware, dashboardRateLimit, alertsRouter);
