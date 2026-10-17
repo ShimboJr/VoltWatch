@@ -209,7 +209,19 @@ async function boot() {
   router.start();
 }
 
-boot().catch(err => {
-  console.error('[VoltWatch] Boot error:', err);
-  router.start(); // Start anyway (will redirect to login)
-});
+// ─── Dismiss loader ───────────────────────────────────────
+function _dismissLoader() {
+  document.body.classList.remove('app-loading');
+  const loader = document.getElementById('app-loader');
+  if (!loader) return;
+  loader.classList.add('fade-out');
+  setTimeout(() => loader.remove(), 260);
+}
+
+boot()
+  .then(_dismissLoader)
+  .catch(err => {
+    console.error('[VoltWatch] Boot error:', err);
+    _dismissLoader();
+    router.start(); // Start anyway (will redirect to login)
+  });

@@ -41,9 +41,11 @@ export function initLoginPage() {
     _setError(errorEl, '');
 
     try {
-      const data = await auth.login(email, password);
-      store.set('user', data.user ?? { email });
-      router.go('#/live');
+      await auth.login(email, password);
+      // Reload so boot() re-runs auth.me() with the new session cookie,
+      // sets _authed = true, then routes to #/live correctly.
+      location.href = location.origin + location.pathname + '#/live';
+      location.reload();
     } catch (err) {
       _setLoading(submitBtn, false);
       if (err.status === 401) {
