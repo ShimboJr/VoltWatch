@@ -17,7 +17,7 @@
 
 // ── Cache names (bump CACHE_VERSION to force full refresh) ───────────────────
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE   = `vw-shell-${CACHE_VERSION}`;
 const API_CACHE     = `vw-api-${CACHE_VERSION}`;
 const ASSET_CACHE   = `vw-assets-${CACHE_VERSION}`;
@@ -35,6 +35,7 @@ const SHELL_URLS = [
   '/css/pages2.css',
   '/css/pages3.css',
   '/js/app.js',
+  '/js/config.js',
   '/js/api.js',
   '/js/store.js',
   '/js/router.js',
