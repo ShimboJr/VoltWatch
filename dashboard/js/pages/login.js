@@ -41,11 +41,11 @@ export function initLoginPage() {
     _setError(errorEl, '');
 
     try {
-      await auth.login(email, password);
-      // Reload so boot() re-runs auth.me() with the new session cookie,
-      // sets _authed = true, then routes to #/live correctly.
-      location.href = location.origin + location.pathname + '#/live';
-      location.reload();
+      const data = await auth.login(email, password);
+      // Set authed state and load data without a page reload.
+      // window.__vw.afterLogin() sets _authed=true, fetches devices/settings,
+      // then navigates to #/live — eliminating the reload race condition.
+      await window.__vw.afterLogin(data?.user ?? { email });
     } catch (err) {
       _setLoading(submitBtn, false);
       if (err.status === 401) {

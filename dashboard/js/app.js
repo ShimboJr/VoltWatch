@@ -24,8 +24,14 @@ import { renderOnboardingCard, subscribeOnboarding, shouldShowOnboarding } from 
 
 import { registerSW, showIOSInstallGuide, isIOS, isInstalled, canInstall } from './push.js';
 
-// Expose poller globally for manual refresh
-window.__vw = { poller, store };
+// Expose poller + auth helper globally
+// afterLogin() is called by login.js after a successful login so we
+// can set _authed and load data without a page reload.
+window.__vw = {
+  poller,
+  store,
+  afterLogin: (userObj) => _afterLogin(userObj),
+};
 
 // ─── Theme ────────────────────────────────────────────────────
 
@@ -124,6 +130,51 @@ function _updateDeviceSwitcher(list, activeId) {
   ).join('');
 }
 
+// ─── Post-auth data loader ───────────────────────────────────
+// Called after both session-restore (boot) and explicit login (login.js).
+
+async function _afterLogin(userObj) {
+  _authed = true;
+  store.set('user', userObj);
+
+  // Load first device
+  try {
+    const devList = await devices.list();
+    const list    = devList.devices || devList || [];
+    store.set('devices', list);
+
+    if (list.length > 0) {
+      store.set('deviceId', list[0]._id);
+      _updateDeviceSwitcher(list, list[0]._id);
+    }
+  } catch { /* no devices yet — handled by live page empty state */ }
+
+  // Load user settings (non-fatal)
+  try {
+    const cfg = await settings.get();
+    const s   = cfg?.settings || cfg || {};
+    store.set('settings', s);
+    applyTheme(s.theme);
+    sound.setVolume(s.alarmVolume ?? 0.8);
+  } catch { /* ignore */ }
+
+  // Subscribe onboarding card to store changes
+  const ob = document.getElementById('onboarding-card');
+  if (ob) subscribeOnboarding(ob);
+
+  // Show glance shortcut
+  const glanceBtn = document.getElementById('btn-glance-shortcut');
+  if (glanceBtn) glanceBtn.style.display = '';
+
+  // Navigate to live — if already there, re-dispatch to kick off poller
+  if (router.current()?.startsWith('#/live')) {
+    const deviceId = store.get('deviceId');
+    if (deviceId) { poller.stop(); poller.start(deviceId); }
+  } else {
+    router.go('#/live');
+  }
+}
+
 // ─── Settings page ────────────────────────────────────────────
 // (now handled by settings.js — stub kept for compatibility)
 function _renderSettingsPage() { /* no-op; initSettingsPage() called by router */ }
@@ -177,42 +228,11 @@ async function boot() {
   // ── Try to restore session (runs after UI is already visible) ─
   try {
     const me = await auth.me();
-    _authed = true;
-    store.set('user', me.user || me);
-
-    // Load first device
-    const devList = await devices.list();
-    const list    = devList.devices || devList;
-    store.set('devices', list);
-
-    if (list.length > 0) {
-      store.set('deviceId', list[0]._id);
-      _updateDeviceSwitcher(list, list[0]._id);
-    }
-
-    // Load user settings (non-fatal)
-    try {
-      const cfg = await settings.get();
-      const s   = cfg?.settings || cfg || {};
-      store.set('settings', s);
-      applyTheme(s.theme);
-      sound.setVolume(s.alarmVolume ?? 0.8);
-    } catch { /* ignore */ }
-
-    // Subscribe onboarding card to store changes
-    const ob = document.getElementById('onboarding-card');
-    if (ob) subscribeOnboarding(ob);
-
-    // Show glance shortcut after auth
-    const glanceBtn = document.getElementById('btn-glance-shortcut');
-    if (glanceBtn) glanceBtn.style.display = '';
-
-    // Navigate to live page now that session is confirmed
-    router.go('#/live');
-
+    await _afterLogin(me.user || me);
   } catch {
-    // Not authenticated — router is already at #/login, nothing more to do
-    _authed = false;
+    // Not authenticated — router is already at #/login, nothing to do.
+    // Do NOT reset _authed here; login.js may have already set it to true
+    // via window.__vw.afterLogin() while auth.me() was in-flight.
   }
 }
 
