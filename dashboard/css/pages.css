@@ -7,10 +7,15 @@
   max-width: 400px;
   margin: 0 auto;
   min-height: 100dvh;
-  display: flex;
   flex-direction: column;
   justify-content: center;
   padding: var(--space-6) var(--space-5);
+  /* display is controlled by .page / .page.active in base.css */
+}
+
+/* Override .page.active { display: block } with flex for the login layout */
+#page-login.active {
+  display: flex;
 }
 
 .login-brand {
