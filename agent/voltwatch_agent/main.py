@@ -122,6 +122,24 @@ def _make_payload(
     )
 
 
+def _reliable_battery_read(attempts: int = 3, delay: float = 1.0) -> BatteryState | None:
+    """
+    Read battery state with retries.
+
+    psutil can transiently return 0 % on Windows at startup before the WMI
+    subsystem finishes initialising.  We retry a few times so the very first
+    heartbeat contains real data rather than a false 0 %.
+    """
+    result = None
+    for i in range(attempts):
+        result = get_battery_state()
+        if result is not None and result.percent > 0:
+            return result
+        if i < attempts - 1:
+            time.sleep(delay)
+    return result  # return whatever we got (could still be 0% or None)
+
+
 # ── Doctor mode ────────────────────────────────────────────────────────────────
 
 def run_doctor() -> int:
@@ -337,24 +355,35 @@ class Agent:
     # ── Startup sequence ───────────────────────────────────────────────────────
 
     def startup(self) -> None:
-        """Detect unexpected shutdown and send agent_started."""
+        """Detect unexpected shutdown and send agent_started with real battery data."""
         data_dir = get_data_dir()
         last_run_str = _load_last_run(data_dir)
         last_run_dt  = parse_shutdown_timestamp(last_run_str)
+
+        # Read real battery state before sending any events so the first
+        # heartbeat stored by the backend has accurate percent / AC state.
+        initial_battery = _reliable_battery_read()
+        initial_mt5     = is_mt5_running(self.cfg.mt5_process_names)
+
+        # Seed prev_battery so the sampling loop doesn't fire a spurious
+        # AC-transition event on the very first sample.
+        if initial_battery is not None:
+            self._prev_battery = initial_battery
+        self._prev_mt5 = initial_mt5
 
         # Check for unclean shutdown event in Windows event log
         last_event_dt = query_last_unclean_shutdown()
         if is_unexpected_shutdown(last_event_dt, last_run_dt):
             log.warning("Unexpected shutdown detected at %s", last_event_dt)
             payload = _make_payload(
-                self.cfg, None, False,
+                self.cfg, initial_battery, initial_mt5,
                 kind="event", event="unexpected_shutdown_detected",
                 meta={"shutdownAt": last_event_dt.isoformat() if last_event_dt else None},
             )
             self.client.send_heartbeat(payload)
 
-        # agent_started
-        payload = _make_payload(self.cfg, None, False,
+        # agent_started — send with real battery data
+        payload = _make_payload(self.cfg, initial_battery, initial_mt5,
                                 kind="event", event="agent_started")
         self.client.send_heartbeat(payload)
 

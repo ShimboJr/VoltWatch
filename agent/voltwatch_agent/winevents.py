@@ -168,7 +168,7 @@ class _ShutdownWatcher:
             user32   = ctypes.windll.user32
 
             WNDPROCTYPE = ctypes.WINFUNCTYPE(
-                ctypes.c_long, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM
+                ctypes.c_longlong, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM
             )
 
             def wnd_proc(hwnd, msg, wparam, lparam):
