@@ -173,7 +173,12 @@ async function getDownsampledReadings(deviceId, range, settings) {
 // GET /api/v1/devices
 router.get('/', async (req, res, next) => {
   try {
-    const devices = await Device.find({}, { tokenHash: 0 }).lean();
+    const raw = await Device.find({}, { tokenHash: 0 }).lean();
+    // Remap lastReading → latestReading to match the frontend field name
+    const devices = raw.map(({ lastReading, ...d }) => ({
+      ...d,
+      latestReading: lastReading ?? null,
+    }));
     res.json({ devices });
   } catch (err) {
     next(err);
@@ -288,7 +293,7 @@ router.get('/:id/status', async (req, res, next) => {
     }
 
     const status = await deriveStatus(device, settings);
-    res.json(status);
+    res.json({ deviceId: id.toString(), ...status });
   } catch (err) {
     next(err);
   }

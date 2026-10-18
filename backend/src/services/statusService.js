@@ -277,11 +277,11 @@ export async function deriveStatus(device, settings, { predictions = true } = {}
   }
 
   return {
-    status,
+    deviceStatus: status,
     power,
     severity,
     lastSeenAt: device.lastSeenAt ?? null,
-    lastReading: lr
+    latestReading: lr
       ? {
           percent: lr.percent,
           charging: lr.charging,
