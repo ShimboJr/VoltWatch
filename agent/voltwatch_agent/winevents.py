@@ -161,7 +161,8 @@ class _ShutdownWatcher:
             WM_QUERYENDSESSION = 0x0011
             WM_ENDSESSION      = 0x0016
             WS_EX_NOACTIVATE   = 0x08000000
-            GWL_WNDPROC        = -4
+            ERROR_CLASS_ALREADY_EXISTS = 1410
+            HWND_MESSAGE = ctypes.cast(-3, wt.HWND)  # message-only window parent
 
             kernel32 = ctypes.windll.kernel32
             user32   = ctypes.windll.user32
@@ -178,23 +179,6 @@ class _ShutdownWatcher:
                 return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
             wnd_proc_ref = WNDPROCTYPE(wnd_proc)
-
-            WNDCLASS = type("WNDCLASS", (), {})()
-            WNDCLASS.style         = 0
-            WNDCLASS.lpfnWndProc   = wnd_proc_ref
-            WNDCLASS.cbClsExtra    = 0
-            WNDCLASS.cbWndExtra    = 0
-            WNDCLASS.hInstance     = kernel32.GetModuleHandleW(None)
-            WNDCLASS.hIcon         = None
-            WNDCLASS.hCursor       = None
-            WNDCLASS.hbrBackground = None
-            WNDCLASS.lpszMenuName  = None
-            WNDCLASS.lpszClassName = "VoltWatchShutdownWatcher"
-
-            import ctypes.wintypes
-            wc_type = ctypes.c_char.__class__  # placeholder – use RegisterClassEx via struct
-            # Use a simpler RegisterClass approach via ctypes struct
-            _wc = (ctypes.c_uint * 10)()  # simplified — full impl below
 
             # Full WNDCLASSW struct
             class WNDCLASSW(ctypes.Structure):
@@ -223,19 +207,26 @@ class _ShutdownWatcher:
             wc.lpszMenuName  = None
             wc.lpszClassName = "VoltWatchShutdownWatcher"
 
-            user32.RegisterClassW(ctypes.byref(wc))
+            reg_ok = user32.RegisterClassW(ctypes.byref(wc))
+            if not reg_ok:
+                err = kernel32.GetLastError()
+                if err != ERROR_CLASS_ALREADY_EXISTS:
+                    log.warning("Could not register window class for shutdown detection (error %d)", err)
+                    return
+                # Class already registered from a previous run — that's fine, continue.
 
             hwnd = user32.CreateWindowExW(
                 WS_EX_NOACTIVATE,
                 "VoltWatchShutdownWatcher",
                 "VoltWatch",
                 0, 0, 0, 0, 0,
-                -3,  # HWND_MESSAGE
+                HWND_MESSAGE,
                 None, None, None,
             )
 
             if not hwnd:
-                log.warning("Could not create message window for shutdown detection")
+                err = kernel32.GetLastError()
+                log.warning("Could not create message window for shutdown detection (error %d)", err)
                 return
 
             msg = wt.MSG()

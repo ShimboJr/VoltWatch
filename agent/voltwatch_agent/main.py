@@ -535,13 +535,31 @@ def main() -> None:
         agent.run()
     else:
         agent._setup_tray()
-        # Run sampling loop in background thread; tray blocks main thread
-        loop_thread = threading.Thread(target=agent.run, daemon=True, name="AgentLoop")
-        loop_thread.start()
+
         if agent._tray:
-            agent._tray.run()  # blocks until quit
-        agent._stop_event.set()
-        loop_thread.join(timeout=5)
+            # pystray.run() blocks the main thread — this is intentional.
+            # The terminal will appear frozen; look for the VoltWatch icon
+            # in the system tray (bottom-right of taskbar, click ^ to expand).
+            log.info("Tray icon starting — terminal will be unresponsive while agent runs. "
+                     "Right-click the tray icon to quit, or press Ctrl+C here.")
+            # Run sampling loop in background thread; tray blocks main thread
+            loop_thread = threading.Thread(target=agent.run, daemon=True, name="AgentLoop")
+            loop_thread.start()
+            try:
+                agent._tray.run()  # blocks until quit
+            except Exception as exc:
+                log.warning("Tray icon failed (%s) — falling back to headless mode. "
+                            "Press Ctrl+C to stop.", exc)
+                agent._stop_event.clear()  # reset in case tray set it
+                agent.run()  # blocks until Ctrl+C
+            finally:
+                agent._stop_event.set()
+                loop_thread.join(timeout=5)
+        else:
+            # Tray setup failed (missing pystray/Pillow, or running as Administrator
+            # which can block systray access) — run headless.
+            log.warning("Tray unavailable — running headless. Press Ctrl+C to stop.")
+            agent.run()
 
 
 if __name__ == "__main__":
