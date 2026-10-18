@@ -347,7 +347,7 @@ async function _wizardStep1() {
 
   try {
     const res = await devicesApi.create({ name });
-    _wizardDevice = res.device || res;
+    _wizardDevice = { ...(res.device || res), token: res.token };
 
     // Show token once in step 2
     document.getElementById('wizard-token-display').textContent = _wizardDevice.token || '(not returned)';
