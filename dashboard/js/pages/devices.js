@@ -89,9 +89,21 @@ function _renderDevices(list) {
 
 function _deviceCardHTML(d) {
   const r   = d.latestReading || {};
-  const online = d.online || d.deviceStatus === 'online';
-  const statusColor = online ? 'var(--c-ok)' : 'var(--c-unknown)';
-  const statusLabel = online ? 'Online' : d.deviceStatus === 'stale' ? 'Stale' : 'Offline';
+
+  // Compute status from lastSeenAt age (same thresholds as backend deriveStatus)
+  const STALE_SEC   = 90;   // matches backend default staleAfterSec
+  const OFFLINE_SEC = 300;  // matches backend default offlineAfterSec
+  let deviceStatus = 'never';
+  if (d.lastSeenAt) {
+    const ageSec = (Date.now() - new Date(d.lastSeenAt).getTime()) / 1000;
+    if (ageSec <= STALE_SEC)    deviceStatus = 'online';
+    else if (ageSec <= OFFLINE_SEC) deviceStatus = 'stale';
+    else                        deviceStatus = 'offline';
+  }
+  const online      = deviceStatus === 'online';
+  const statusLabel = online ? 'Online' : deviceStatus === 'stale' ? 'Stale' : 'Offline';
+  const statusColor = online ? 'var(--c-ok)' : deviceStatus === 'stale' ? 'var(--c-warning)' : 'var(--c-unknown)';
+
   const pct  = r.percent != null ? `${Math.round(r.percent)}%` : '—';
   const ac   = r.acConnected != null ? (r.acConnected ? '🔌 AC' : '🔋 Battery') : '—';
   const mt5  = r.mt5Running != null ? (r.mt5Running ? '📈 On' : '📉 Off') : '—';
@@ -116,7 +128,7 @@ function _deviceCardHTML(d) {
             ${paused ? `<span class="pill pill-critical" style="margin-left:4px">Alerts paused</span>` : ''}
           </div>
         </div>
-        <span class="pill ${online ? 'pill-ok' : 'pill-unknown'}" style="margin-left:auto">${statusLabel}</span>
+        <span class="pill ${online ? 'pill-ok' : deviceStatus === 'stale' ? 'pill-warning' : 'pill-unknown'}" style="margin-left:auto">${statusLabel}</span>
       </div>
 
       <div class="device-snapshot">

@@ -199,6 +199,10 @@ export const poller = {
     _stopped  = false;
     _failCount = 0;
 
+    // Fire an immediate poll so the live page renders data right away
+    // regardless of how long SSE takes to establish on the server.
+    _doPoll();
+
     if (typeof EventSource !== 'undefined') {
       _startSSE();
     } else {
