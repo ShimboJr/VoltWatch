@@ -154,6 +154,18 @@
         <span class="conn-dot" aria-hidden="true"></span>
         <span class="conn-text">Offline</span>
       </div>
+
+      <!-- Sign out — only visible on mobile/tablet where sidebar is hidden -->
+      <button id="btn-logout-topbar"
+              class="btn btn-ghost btn-sm"
+              aria-label="Sign out"
+              style="margin-left:var(--space-2);padding:6px 10px;display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="vertical-align:middle">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
     </header>
 
     <!-- Offline banner -->
@@ -488,6 +500,21 @@
       <section id="page-settings" class="page" aria-labelledby="settings-heading">
         <h1 id="settings-heading" style="font-size:var(--text-xl);margin-bottom:var(--space-4)">Settings</h1>
         <div id="settings-content"></div>
+
+        <!-- Sign out — shown on mobile/tablet where sidebar is hidden -->
+        <div id="settings-signout-row"
+             style="display:none;margin-top:var(--space-8);padding-top:var(--space-4);border-top:1px solid var(--border-subtle)">
+          <button id="btn-logout-settings"
+                  class="btn btn-ghost"
+                  style="width:100%;color:var(--c-critical);border-color:var(--c-critical)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="vertical-align:middle;margin-right:6px">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sign out
+          </button>
+        </div>
       </section>
 
       <!-- ══ Glance Page ══════════════════════════════════════ -->

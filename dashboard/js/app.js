@@ -180,6 +180,19 @@ async function _afterLogin(userObj) {
 // (now handled by settings.js — stub kept for compatibility)
 function _renderSettingsPage() { /* no-op; initSettingsPage() called by router */ }
 
+// ─── Shared logout handler ─────────────────────────────────────
+
+async function _doLogout() {
+  try { await auth.logout(); } catch { /* ignore */ }
+  _authed = false;
+  store.set('user', null);
+  store.set('devices', []);
+  poller.stop();
+  const glanceBtn = document.getElementById('btn-glance-shortcut');
+  if (glanceBtn) glanceBtn.style.display = 'none';
+  router.go('#/login');
+}
+
 // ─── Bootstrap ───────────────────────────────────────────────
 
 async function boot() {
@@ -196,15 +209,25 @@ async function boot() {
   });
 
   document.getElementById('btn-logout')?.addEventListener('click', async () => {
-    try { await auth.logout(); } catch { /* ignore */ }
-    _authed = false;
-    store.set('user', null);
-    store.set('devices', []);
-    poller.stop();
-    document.getElementById('btn-glance-shortcut')?.style &&
-      (document.getElementById('btn-glance-shortcut').style.display = 'none');
-    router.go('#/login');
+    await _doLogout();
   });
+  document.getElementById('btn-logout-topbar')?.addEventListener('click', async () => {
+    await _doLogout();
+  });
+  document.getElementById('btn-logout-settings')?.addEventListener('click', async () => {
+    await _doLogout();
+  });
+
+  // Show mobile logout buttons only when sidebar is hidden (≤992px)
+  function _syncMobileLogout() {
+    const sidebarVisible = window.matchMedia('(min-width: 992px)').matches;
+    const topbarBtn  = document.getElementById('btn-logout-topbar');
+    const settingsRow = document.getElementById('settings-signout-row');
+    if (topbarBtn)   topbarBtn.style.display   = sidebarVisible ? 'none' : '';
+    if (settingsRow) settingsRow.style.display  = sidebarVisible ? 'none' : '';
+  }
+  _syncMobileLogout();
+  window.matchMedia('(min-width: 992px)').addEventListener('change', _syncMobileLogout);
 
   // ── Start router & dismiss loader immediately ─────────────────
   // Router shows #/login right away (since _authed is still false).
