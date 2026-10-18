@@ -472,6 +472,12 @@ def main() -> None:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--no-tray", action="store_true",
                         help="Run headless (no tray icon)")
+    parser.add_argument("--api", metavar="URL",
+                        help="Backend API URL, e.g. https://your-voltwatch.vercel.app/api/v1 "
+                             "(used to bootstrap config on first run)")
+    parser.add_argument("--token", metavar="TOKEN",
+                        help="Device token from the dashboard "
+                             "(used to bootstrap config on first run)")
     args = parser.parse_args()
 
     # ── Doctor mode ────────────────────────────────────────────────────────────
@@ -490,25 +496,31 @@ def main() -> None:
     if cfg is None:
         setup_logging("INFO")
 
-        # Check for bootstrap file next to exe (handled inside load_config)
-        cfg = load_config()  # reload in case bootstrap was imported
+        # ── CLI bootstrap (--api + --token) ────────────────────────────────────
+        if args.api and args.token:
+            log.info("Bootstrapping config from --api / --token flags")
+            cfg = Config(api_url=args.api, device_token=args.token)
+            save_config(cfg)
+        else:
+            # Check for bootstrap file next to exe (handled inside load_config)
+            cfg = load_config()  # reload in case bootstrap was imported
 
-        if cfg is None:
-            # Show pairing dialog
-            _paired_cfg: Config | None = None
+            if cfg is None:
+                # Show pairing dialog
+                _paired_cfg: Config | None = None
 
-            def _on_paired(api_url: str, token: str) -> None:
-                nonlocal _paired_cfg
-                _paired_cfg = Config(api_url=api_url, device_token=token)
-                save_config(_paired_cfg)
+                def _on_paired(api_url: str, token: str) -> None:
+                    nonlocal _paired_cfg
+                    _paired_cfg = Config(api_url=api_url, device_token=token)
+                    save_config(_paired_cfg)
 
-            from voltwatch_agent.pairing import show_pairing_dialog
-            show_pairing_dialog(_on_paired)
+                from voltwatch_agent.pairing import show_pairing_dialog
+                show_pairing_dialog(_on_paired)
 
-            if _paired_cfg is None:
-                log.info("Pairing cancelled — exiting")
-                sys.exit(0)
-            cfg = _paired_cfg
+                if _paired_cfg is None:
+                    log.info("Pairing cancelled — exiting")
+                    sys.exit(0)
+                cfg = _paired_cfg
 
     # ── Setup logging with token redaction ─────────────────────────────────────
     setup_logging(cfg.log_level, token=cfg.device_token)

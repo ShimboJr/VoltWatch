@@ -203,16 +203,21 @@ Full instructions are in `agent/README.md`. Quick steps:
 ```powershell
 cd agent
 pip install -r requirements.txt
+
+# First run — supply API URL and token to skip the GUI pairing dialog:
 python voltwatch_agent.py --api https://your-voltwatch.vercel.app/api/v1 --token YOUR_DEVICE_TOKEN
+
+# Equivalent package form (same result):
+python -m voltwatch_agent.main --api https://your-voltwatch.vercel.app/api/v1 --token YOUR_DEVICE_TOKEN
 ```
+
+> **Note:** `--api` and `--token` are only needed the **first time** to bootstrap the saved config.
+> On subsequent runs, simply run `python voltwatch_agent.py` (or launch `VoltWatchAgent.exe`).
+> The credentials are saved to `%LOCALAPPDATA%\VoltWatch\config.json` and Windows Credential Manager.
 
 The device token is shown once when you create a device in Settings → Devices.
 
-**Optional autostart:**
-```powershell
-# Creates a Startup shortcut (no admin required)
-python voltwatch_agent.py --install-startup
-```
+**Autostart:** Use the system-tray menu → **Start with Windows** to toggle autostart (no admin required).
 
 ---
 
