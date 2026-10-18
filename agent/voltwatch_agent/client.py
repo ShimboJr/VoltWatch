@@ -71,9 +71,13 @@ def build_payload(
     All arguments are keyword-only to prevent positional mistakes.
     This is a pure function — fully testable without network or OS.
     """
+    now_utc = datetime.now(tz=timezone.utc)
+    # Format with millisecond precision (3 decimal places) — Zod's z.string().datetime()
+    # rejects Python's default isoformat() which emits 6 decimal places (microseconds).
+    default_device_time = now_utc.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now_utc.microsecond // 1000:03d}Z"
     return {
         "readingId": reading_id or str(uuid.uuid4()),
-        "deviceTime": device_time or datetime.now(tz=timezone.utc).isoformat(),
+        "deviceTime": device_time or default_device_time,
         "kind": kind,
         "event": event,
         "percent": round(percent, 1),

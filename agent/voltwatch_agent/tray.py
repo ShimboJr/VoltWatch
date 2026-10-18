@@ -228,7 +228,7 @@ class TrayApp:
                      if self._last_report_at else "never")
             return f"{self._percent}% {power} | MT5 {mt5} | {last}"
 
-        autostart_checked = pystray.MenuItem.NONE
+
 
         items = [
             pystray.MenuItem(lambda _: _status_item(), None, enabled=False),

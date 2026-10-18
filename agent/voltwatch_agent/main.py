@@ -443,14 +443,6 @@ class Agent:
         # Register Windows shutdown watcher
         start_shutdown_watcher(self._send_planned_stop)
 
-        # Ctrl+C / SIGTERM
-        def _sig_handler(sig, frame):
-            log.info("Signal %s received — shutting down", sig)
-            self._send_planned_stop()
-            self._stop_event.set()
-        signal.signal(signal.SIGINT,  _sig_handler)
-        signal.signal(signal.SIGTERM, _sig_handler)
-
         log.info("Agent started (interval=%ds)", self.cfg.interval_sec)
 
         while not self._stop_event.is_set():
@@ -529,6 +521,14 @@ def main() -> None:
     # ── Build agent ────────────────────────────────────────────────────────────
     agent = Agent(cfg)
     agent.startup()
+
+    # ── Signal handlers (must be in the main thread) ───────────────────────────
+    def _sig_handler(sig, frame):
+        log.info("Signal %s received — shutting down", sig)
+        agent._send_planned_stop()
+        agent._stop_event.set()
+    signal.signal(signal.SIGINT,  _sig_handler)
+    signal.signal(signal.SIGTERM, _sig_handler)
 
     # ── Tray + loop ────────────────────────────────────────────────────────────
     if args.no_tray or sys.platform != "win32":
