@@ -155,10 +155,15 @@ async function _load() {
 
   _showLoading(true);
 
-  const since = new Date(Date.now() - RANGE_MS[_range]).toISOString();
   try {
-    const res = await readingsApi.list(deviceId, { since, limit: 2000 });
-    _rawData = res?.readings || res || [];
+    // Backend /devices/:id/readings accepts `range` and returns { points, gaps }
+    // Each point has field `t` (ISO string). We normalise it to `deviceTime`
+    // so the rest of the chart code works uniformly.
+    const res = await readingsApi.list(deviceId, { range: _range });
+    const rawPoints = res?.points || res?.readings || [];
+    _rawData = Array.isArray(rawPoints)
+      ? rawPoints.map(p => (p.t ? { ...p, deviceTime: p.t } : p))
+      : [];
     _buildOrUpdate();
     _renderSummary();
     _updateA11ySummary();
