@@ -17,7 +17,7 @@
 
 // ── Cache names (bump CACHE_VERSION to force full refresh) ───────────────────
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE   = `vw-shell-${CACHE_VERSION}`;
 const API_CACHE     = `vw-api-${CACHE_VERSION}`;
 const ASSET_CACHE   = `vw-assets-${CACHE_VERSION}`;
@@ -116,9 +116,15 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Only handle same-origin and CDN (fonts, Chart.js)
+  // Let the browser handle Google Fonts stylesheet requests natively.
+  // The SW cannot cache opaque cross-origin CSS responses reliably, and
+  // intercepting them causes CSP connect-src violations in some browsers.
+  if (url.hostname === 'fonts.googleapis.com') {
+    return; // pass-through — browser uses its own HTTP cache
+  }
+
+  // Only handle same-origin and allowed CDN/font-file origins
   if (url.origin !== location.origin &&
-      !url.hostname.includes('fonts.googleapis.com') &&
       !url.hostname.includes('fonts.gstatic.com') &&
       !url.hostname.includes('cdn.jsdelivr.net')) {
     return;
@@ -138,7 +144,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets → stale-while-revalidate
+  // Static assets + font files → stale-while-revalidate
   event.respondWith(_staleWhileRevalidate(request));
 });
 
