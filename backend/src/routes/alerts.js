@@ -14,17 +14,21 @@ router.use(requireAuth);
 // Must be defined BEFORE /:id routes
 router.post('/test', async (req, res, next) => {
   try {
-    // Use the user's first device so the alert shows up correctly in the dashboard.
-    // Falls back to a random ObjectId if no device exists yet.
     const device = await Device.findOne({}, { _id: 1 }).lean();
     const deviceId = device?._id ?? new mongoose.Types.ObjectId();
 
+    // Remove any previously unresolved test alerts so the unique dedupeKey
+    // constraint is never triggered on repeated clicks.
+    await Alert.deleteMany({ type: 'TEST', state: { $in: ['active', 'acknowledged'] } });
+
     const alert = await Alert.create({
       deviceId,
-      type:     'TEST',
-      severity: 'info',
-      message:  '✅ This is a test alert from VoltWatch. Notifications are working.',
-      state:    'active',
+      type:      'TEST',
+      severity:  'info',
+      message:   '✅ This is a test alert from VoltWatch. Notifications are working.',
+      state:     'active',
+      // Unique key per test run so the sparse unique index never conflicts.
+      dedupeKey: `TEST:${Date.now()}`,
     });
 
     // Auto-resolve after 2 minutes
@@ -42,6 +46,10 @@ router.post('/test', async (req, res, next) => {
     broadcast('alert', { alert });
     res.status(201).json({ alert });
   } catch (err) {
+    // Duplicate key (11000) can only happen if two requests race; treat as success-ish.
+    if (err.code === 11000) {
+      return res.status(429).json({ error: { code: 'TEST_IN_PROGRESS', message: 'A test alert was just created. Please wait a moment.' } });
+    }
     next(err);
   }
 });
