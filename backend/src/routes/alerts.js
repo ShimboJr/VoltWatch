@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/authSession.js';
 import { validate } from '../middleware/validate.js';
 import { Alert } from '../models/Alert.js';
+import { Device } from '../models/Device.js';
 import { broadcast } from './stream.js';
 
 const router = Router();
@@ -13,13 +14,17 @@ router.use(requireAuth);
 // Must be defined BEFORE /:id routes
 router.post('/test', async (req, res, next) => {
   try {
+    // Use the user's first device so the alert shows up correctly in the dashboard.
+    // Falls back to a random ObjectId if no device exists yet.
+    const device = await Device.findOne({}, { _id: 1 }).lean();
+    const deviceId = device?._id ?? new mongoose.Types.ObjectId();
+
     const alert = await Alert.create({
-      deviceId: new mongoose.Types.ObjectId(),
-      type: 'TEST',
+      deviceId,
+      type:     'TEST',
       severity: 'info',
-      message: '✅ This is a test alert from VoltWatch. Notifications are working.',
-      state: 'active',
-      meta: { test: true },
+      message:  '✅ This is a test alert from VoltWatch. Notifications are working.',
+      state:    'active',
     });
 
     // Auto-resolve after 2 minutes
