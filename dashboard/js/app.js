@@ -135,6 +135,9 @@ function _updateDeviceSwitcher(list, activeId) {
 // Called after both session-restore (boot) and explicit login (login.js).
 
 async function _afterLogin(userObj) {
+  // Set _authed=true here too so explicit logins (via login.js → window.__vw.afterLogin)
+  // also unlock the router guard. On boot, this is a harmless no-op since boot() already
+  // sets _authed=true before calling _afterLogin.
   _authed = true;
   store.set('user', userObj);
 
@@ -229,12 +232,8 @@ async function boot() {
   _syncMobileLogout();
   window.matchMedia('(min-width: 992px)').addEventListener('change', _syncMobileLogout);
 
-  // ── Start router & dismiss loader immediately ─────────────────
-  // Router shows #/login right away (since _authed is still false).
-  // We don't block on network — the auth check below will navigate
-  // to #/live if the session is valid.
-  router.start();
-  _dismissLoader();
+  // (router.start() and _dismissLoader() are called after auth check below
+  //  to prevent the login-page flash on reload)
 
   // ── Dead-man health poll ──────────────────────────────────────
   (function startDeadManPoll() {
@@ -249,14 +248,28 @@ async function boot() {
     setInterval(checkHealth, 5 * 60 * 1000);
   })();
 
-  // ── Try to restore session (runs after UI is already visible) ─
+  // ── Try to restore session BEFORE starting the router ────────
+  // Keeping the app-loader visible until auth state is known prevents
+  // the "flash of login page" on every reload when the user is already
+  // authenticated. The loader CSS is already in index.html.
   try {
     const me = await auth.me();
+    // Session is valid — set auth flag so the router guard passes.
+    _authed = true;
+    // Start the router now that we know the user is authenticated.
+    // It will navigate to #/live (or whatever hash is in the URL).
+    router.start();
+    _dismissLoader();
+    // Load devices, settings, etc. without blocking the render.
     await _afterLogin(me.user || me);
   } catch {
-    // Not authenticated — router is already at #/login, nothing to do.
-    // Do NOT reset _authed here; login.js may have already set it to true
-    // via window.__vw.afterLogin() while auth.me() was in-flight.
+    // Not authenticated — show the login page.
+    router.start();
+    _dismissLoader();
+    // Ensure we land on login (router will redirect anyway, but be explicit).
+    if (!location.hash.startsWith('#/login')) {
+      router.go('#/login');
+    }
   }
 }
 
