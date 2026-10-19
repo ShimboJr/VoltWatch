@@ -101,7 +101,7 @@ function _renderActive() {
   if (!container) return;
 
   let list = (store.get('alerts') || []).filter(a => !a.acknowledgedAt);
-  if (_severity !== 'all') list = list.filter(a => a.level === _severity);
+  if (_severity !== 'all') list = list.filter(a => a.severity === _severity);
 
   if (!list.length) {
     container.innerHTML = `
@@ -138,7 +138,7 @@ function _renderHistory() {
   if (!container) return;
 
   let list = _histPage;
-  if (_severity !== 'all') list = list.filter(a => a.level === _severity);
+  if (_severity !== 'all') list = list.filter(a => a.severity === _severity);
 
   if (!list.length) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><h3>${S.noAlertsYet}</h3></div>`;
@@ -150,7 +150,7 @@ function _renderHistory() {
 }
 
 function _alertCardHTML(a, isActive) {
-  const sev  = a.level || 'info';
+  const sev  = a.severity || 'info';
   const icon = SEVERITY_ICON[sev] || 'ℹ️';
   const ts   = a.firedAt || a.createdAt;
   const deviceName = store.get('devices')?.find(d => d._id === a.deviceId)?.name || S.unknown;

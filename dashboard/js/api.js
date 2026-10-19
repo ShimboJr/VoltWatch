@@ -49,7 +49,14 @@ async function _fetch(path, options = {}, attempt = 0) {
       let message = `Request failed (${res.status})`;
       try {
         const body = await res.json();
-        message = body.message || body.error || message;
+        // Backend errors come as { error: { code, message } } or { message } or { error: "string" }
+        if (typeof body?.error?.message === 'string') {
+          message = body.error.message;
+        } else if (typeof body?.message === 'string') {
+          message = body.message;
+        } else if (typeof body?.error === 'string') {
+          message = body.error;
+        }
       } catch { /* ignore parse errors */ }
       throw new ApiError(res.status, message);
     }
