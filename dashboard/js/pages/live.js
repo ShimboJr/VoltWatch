@@ -192,9 +192,9 @@ async function _loadSparkline(deviceId) {
   if (!_sparkline || !deviceId) return;
   try {
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const data  = await api.get(`/readings?deviceId=${deviceId}&since=${since}&limit=200`);
+    const data  = await api.get(`/devices/${deviceId}/readings?since=${since}&limit=200`);
     const readings = data?.readings || [];
-    const events   = readings.filter(r => r.event === 'ac_connected' || r.event === 'ac_disconnected');
+    const events   = readings.filter(r => r.event === 'ac_reconnected' || r.event === 'ac_disconnected');
     _sparkline.update(readings, events);
   } catch { /* silent */ }
 }
@@ -283,8 +283,8 @@ function _renderAlerts(alertsList) {
   });
 
   // Critical takeover check
-  const hasCritical = active.some(a => a.level === 'critical');
-  _handleCriticalTakeover(hasCritical, active.find(a => a.level === 'critical'));
+  const hasCritical = active.some(a => a.severity === 'critical');
+  _handleCriticalTakeover(hasCritical, active.find(a => a.severity === 'critical'));
 
   // Badge
   const badge = document.querySelectorAll('.alert-badge');
@@ -292,7 +292,7 @@ function _renderAlerts(alertsList) {
 }
 
 function _alertItemHTML(a) {
-  const sev = a.level === 'critical' ? 'critical' : a.level === 'high' ? 'warning' : 'info';
+  const sev = a.severity === 'critical' ? 'critical' : a.severity === 'high' ? 'warning' : 'info';
   const icon = sev === 'critical' ? '🔴' : sev === 'warning' ? '⚠️' : 'ℹ️';
   return `
     <div class="alert-item" data-severity="${sev}">
@@ -317,14 +317,14 @@ function _wireCriticalTakeover() {
 
   to.querySelector('#to-ack')?.addEventListener('click', async () => {
     const alerts = store.get('alerts') || [];
-    const crit   = alerts.find(a => a.level === 'critical' && !a.acknowledgedAt);
+    const crit   = alerts.find(a => a.severity === 'critical' && !a.acknowledgedAt);
     if (crit) try { await alertsApi.acknowledge(crit._id); } catch { /* ignore */ }
     _dismissTakeover();
   });
 
   to.querySelector('#to-snooze')?.addEventListener('click', async () => {
     const alerts = store.get('alerts') || [];
-    const crit   = alerts.find(a => a.level === 'critical' && !a.acknowledgedAt);
+    const crit   = alerts.find(a => a.severity === 'critical' && !a.acknowledgedAt);
     if (crit) try { await alertsApi.snooze(crit._id, 10); } catch { /* ignore */ }
     _dismissTakeover();
   });
