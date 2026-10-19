@@ -868,6 +868,14 @@ async function _wirePushSection() {
   if (!pill) return; // Section not rendered yet
 
   async function refresh() {
+    // Reset all conditional UI to hidden before each refresh.
+    // This ensures switching states (enable → disable → enable) never leaves
+    // stale buttons visible from a previous branch.
+    [explain, iosHint, blocked, enableBtn, disableBtn, testBtn, installRow].forEach(el => {
+      if (el) el.style.display = 'none';
+    });
+    if (testResult) testResult.textContent = '';
+
     if (!isPushSupported()) {
       pill.textContent = 'Unsupported';
       pill.className   = 'pill pill-unknown';
@@ -895,15 +903,27 @@ async function _wirePushSection() {
     }
 
     if (perm === 'granted') {
+      // Permission is granted — check if there is an active push subscription
       const subs = await listSubscriptions().catch(() => []);
-      pill.textContent = `Active (${subs.length})`;
-      pill.className   = 'pill pill-ok';
-      desc.textContent = subs.length
-        ? `Push enabled on ${subs.length} browser${subs.length > 1 ? 's' : ''}.`
-        : 'Subscribed but no active endpoints found.';
-      if (disableBtn) disableBtn.style.display = '';
-      if (testBtn)    testBtn.style.display    = '';
-      _renderSubsList(subs, refresh);
+      const hasSub = subs.length > 0;
+
+      if (hasSub) {
+        pill.textContent = `Active (${subs.length})`;
+        pill.className   = 'pill pill-ok';
+        desc.textContent = `Push enabled on ${subs.length} browser${subs.length > 1 ? 's' : ''}.`;
+        if (disableBtn) disableBtn.style.display = '';
+        if (testBtn)    testBtn.style.display    = '';
+        _renderSubsList(subs, refresh);
+      } else {
+        // Permission granted but no active endpoint (e.g. just disabled)
+        pill.textContent = 'Not enabled';
+        pill.className   = 'pill pill-unknown';
+        desc.textContent = 'Push permission granted but no active subscription. Tap Enable to re-subscribe.';
+        if (explain)   explain.style.display   = '';
+        if (enableBtn) enableBtn.style.display = '';
+        const subsList = document.getElementById('push-subs-list');
+        if (subsList) subsList.innerHTML = '';
+      }
     } else {
       // 'default' — not yet asked
       pill.textContent = 'Not enabled';
