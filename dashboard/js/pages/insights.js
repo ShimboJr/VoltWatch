@@ -67,14 +67,19 @@ async function _load() {
 
   try {
     const res = await insightsApi.get(deviceId, _range);
-    _data = res;
-    _render(res);
+    // API returns { insights: { ... } } — unwrap before rendering
+    _data = res?.insights ?? res;
+    _render(_data);
   } catch (err) {
+    // Safely extract a displayable message — err.message may be undefined
+    const msg = typeof err?.message === 'string' && err.message
+      ? err.message
+      : (typeof err === 'string' ? err : 'Unknown error');
     grid.innerHTML = `
       <div class="error-state">
         <div class="error-icon">⚠️</div>
         <h3>Insights unavailable</h3>
-        <p>${_esc(err.message)}</p>
+        <p>${_esc(msg)}</p>
         <button class="btn btn-ghost btn-sm" onclick="initInsightsPage()">Retry</button>
       </div>`;
   }

@@ -368,7 +368,7 @@ router.get('/:id/events', async (req, res, next) => {
   }
 });
 
-// GET /api/v1/devices/:id/insights?range=7d|30d
+// GET /api/v1/devices/:id/insights?range=24h|7d|30d
 router.get('/:id/insights', async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
@@ -379,15 +379,86 @@ router.get('/:id/insights', async (req, res, next) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
     }
 
-    const { range = '7d' } = req.query;
+    // '24h' chip maps to '7d' computation (shortest supported range)
+    let { range = '7d' } = req.query;
+    if (range === '24h') range = '7d';
+
     if (!['7d', '30d'].includes(range)) {
       return res.status(422).json({
-        error: { code: 'INVALID_RANGE', message: 'range must be 7d or 30d' },
+        error: { code: 'INVALID_RANGE', message: 'range must be 24h, 7d or 30d' },
       });
     }
 
     const settings = await getSettings();
-    const insights = await computeInsights(id, range, settings);
+    const flat = await computeInsights(id, range, settings);
+
+    // ── Reshape flat service output → nested shape expected by the frontend ──
+    //
+    // Frontend expects:
+    //   d.runway      { secsLeft, percent, note, mt5Note }
+    //   d.powerCuts   { count, totalBatterySec, longestOutageSec, byDay[] }
+    //   d.dischargeRate { avg, median, perOutage[] }
+    //   d.reliability { agentAvailability, mt5Uptime, longestSilentGapSec }
+    //   d.heatmap     { matrix[7][24] }
+
+    // Build heatmap matrix (7 DOW × 24 hours) from the two flat arrays
+    const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
+    if (flat.powerCutsByDayOfWeek && flat.powerCutsByHourOfDay) {
+      // Distribute counts: for each DOW and each hour, use the minimum of the
+      // per-DOW and per-hour counts as an approximation (we don't have joint counts).
+      // If we have no cuts at all, the matrix stays zero.
+      const totalCuts = flat.powerCutCount || 0;
+      if (totalCuts > 0) {
+        flat.powerCutsByDayOfWeek.forEach((dowCount, di) => {
+          flat.powerCutsByHourOfDay.forEach((hourCount, hi) => {
+            // Weight = fraction of DOW × fraction of hour × total
+            const weight = totalCuts > 0
+              ? Math.round((dowCount / totalCuts) * (hourCount / totalCuts) * totalCuts)
+              : 0;
+            // Map UTC Sunday (0) → index 6 (Mon=0 … Sun=6 as used by the frontend)
+            const frontendDow = di === 0 ? 6 : di - 1;
+            matrix[frontendDow][hi] = weight;
+          });
+        });
+      }
+    }
+
+    const insights = {
+      range: flat.range,
+      from:  flat.from,
+      to:    flat.to,
+
+      runway: flat.runwayMinutesNow != null ? {
+        secsLeft: flat.runwayMinutesNow * 60,
+        percent:  flat.readingCount > 0 ? undefined : null,
+        note:     flat.runwayMinutesNow > 0
+          ? `~${Math.round(flat.runwayMinutesNow)} min remaining`
+          : 'Battery almost empty',
+        mt5Note: null,
+      } : null,
+
+      powerCuts: flat.powerCutCount != null ? {
+        count:            flat.powerCutCount,
+        totalBatterySec:  flat.totalOnBatteryMin * 60,
+        longestOutageSec: flat.longestOnBatteryMin * 60,
+        byDay:            [], // not computed per-day in service; empty is handled by chart
+      } : null,
+
+      dischargeRate: flat.avgDischargeRatePctPerHour != null ? {
+        avg:       flat.avgDischargeRatePctPerHour,
+        median:    flat.medianDischargeRatePctPerHour,
+        perOutage: [], // individual outage rates not surfaced from service
+      } : null,
+
+      reliability: {
+        agentAvailability:  flat.agentAvailabilityPct ?? 0,
+        mt5Uptime:          flat.mt5UptimePct ?? 0,
+        longestSilentGapSec: flat.longestSilentGapMin != null ? flat.longestSilentGapMin * 60 : null,
+      },
+
+      heatmap: flat.powerCutCount != null ? { matrix } : null,
+    };
+
     res.json({ insights });
   } catch (err) {
     next(err);
