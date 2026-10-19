@@ -326,7 +326,6 @@ function _createMainChart(labels, pcts, pts, c, unit, stepSize, segmentColour) {
           time: { unit, stepSize, displayFormats: { minute: 'HH:mm', hour: 'HH:mm', day: 'MMM d' } },
           ticks: { color: c.muted, maxRotation: 0, autoSkipPadding: 16 },
           grid: { color: c.border },
-          adapters: { date: {} },
         },
         y: {
           min: 0, max: 100,
