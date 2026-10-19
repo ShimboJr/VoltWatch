@@ -31,27 +31,28 @@ const PAGE_SIZE = 40;
 // ── Event metadata ────────────────────────────────────────────
 
 const EVENT_META = {
-  ac_connected:             { icon: '⚡', label: 'AC connected',         type: 'power',   color: 'chip-ok'       },
-  ac_disconnected:          { icon: '🔋', label: 'AC disconnected',       type: 'power',   color: 'chip-warning'  },
-  low_battery:              { icon: '⚠️', label: 'Low battery',           type: 'alert',   color: 'chip-warning'  },
-  critical_battery:         { icon: '🔴', label: 'Critical battery',       type: 'alert',   color: 'chip-critical' },
-  battery_recovered:        { icon: '✅', label: 'Battery recovered',      type: 'alert',   color: 'chip-ok'       },
-  agent_started:            { icon: '🟢', label: 'Agent started',          type: 'agent',   color: 'chip-ok'       },
-  agent_stopping_planned:   { icon: '⏹️', label: 'Agent stopping (planned)', type: 'agent', color: ''              },
-  unexpected_shutdown_detected: { icon: '💥', label: 'Unexpected shutdown', type: 'agent', color: 'chip-critical'  },
-  mt5_started:              { icon: '📈', label: 'MT5 started',            type: 'mt5',     color: 'chip-ok'       },
-  mt5_stopped:              { icon: '📉', label: 'MT5 stopped',            type: 'mt5',     color: ''              },
-  resumed_from_sleep:       { icon: '😴', label: 'Resumed from sleep',     type: 'agent',   color: ''              },
-  device_offline:           { icon: '📡', label: 'Device went offline',    type: 'agent',   color: 'chip-critical' },
-  device_recovered:         { icon: '🌐', label: 'Device back online',     type: 'agent',   color: 'chip-ok'       },
+  // Maps lowercase(POWER_EVENT_TYPES) → display metadata
+  ac_reconnected:           { icon: '⚡', label: 'AC connected',            type: 'power',   color: 'chip-ok'       },
+  ac_disconnected:          { icon: '🔋', label: 'AC disconnected',          type: 'power',   color: 'chip-warning'  },
+  low_battery:              { icon: '⚠️', label: 'Low battery',              type: 'alert',   color: 'chip-warning'  },
+  heartbeat_lost:           { icon: '📡', label: 'Device went offline',      type: 'agent',   color: 'chip-critical' },
+  heartbeat_recovered:      { icon: '🌐', label: 'Device back online',       type: 'agent',   color: 'chip-ok'       },
+  agent_started:            { icon: '🟢', label: 'Agent started',            type: 'agent',   color: 'chip-ok'       },
+  agent_stopped_planned:    { icon: '⏹️', label: 'Agent stopping (planned)', type: 'agent',   color: ''              },
+  system_shutdown:          { icon: '💥', label: 'System shutdown',          type: 'agent',   color: 'chip-critical' },
+  unexpected_shutdown:      { icon: '💥', label: 'Unexpected shutdown',      type: 'agent',   color: 'chip-critical' },
+  resumed_from_sleep:       { icon: '😴', label: 'Resumed from sleep',       type: 'agent',   color: ''              },
+  mt5_started:              { icon: '📈', label: 'MT5 started',              type: 'mt5',     color: 'chip-ok'       },
+  mt5_stopped:              { icon: '📉', label: 'MT5 stopped',              type: 'mt5',     color: ''              },
 };
 
+// Maps filter chip key → actual lowercase PowerEvent type strings sent to the API
 const FILTER_TYPES = {
   all:   null,
-  power: ['power'],
-  alert: ['alert'],
-  mt5:   ['mt5'],
-  agent: ['agent'],
+  power: ['ac_reconnected', 'ac_disconnected'],
+  alert: ['low_battery'],
+  mt5:   ['mt5_started', 'mt5_stopped'],
+  agent: ['agent_started', 'agent_stopped_planned', 'system_shutdown', 'unexpected_shutdown', 'heartbeat_lost', 'heartbeat_recovered', 'resumed_from_sleep'],
 };
 
 // ── Init ──────────────────────────────────────────────────────
@@ -162,9 +163,8 @@ async function _loadPage() {
   _showLoading(true);
 
   try {
-    const types = _filter !== 'all'
-      ? (FILTER_TYPES[_filter] || []).join(',')
-      : undefined;
+    const typeList = _filter !== 'all' ? FILTER_TYPES[_filter] : null;
+    const types = typeList?.length ? typeList.join(',') : undefined;
 
     const res = await eventsApi.list(deviceId, {
       before: _cursor,

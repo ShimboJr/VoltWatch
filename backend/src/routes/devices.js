@@ -338,16 +338,30 @@ router.get('/:id/events', async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
     const query = { deviceId: id };
 
+    // `before` is a deviceTime ISO string — maps to the `at` field in the model
     if (req.query.before) {
       const beforeDate = new Date(req.query.before);
       if (!isNaN(beforeDate)) query.at = { $lt: beforeDate };
     }
 
+    // `types` filter: frontend sends lowercase snake_case (e.g. "power,agent")
+    // but the model stores UPPER_CASE type values, so map both ways
     if (req.query.types) {
-      query.type = { $in: req.query.types.split(',').map((t) => t.trim()) };
+      const requestedTypes = req.query.types.split(',').map((t) => t.trim().toUpperCase());
+      query.type = { $in: requestedTypes };
     }
 
-    const events = await PowerEvent.find(query).sort({ at: -1 }).limit(limit).lean();
+    const rawEvents = await PowerEvent.find(query).sort({ at: -1 }).limit(limit).lean();
+
+    // Normalise to the shape the frontend timeline.js expects:
+    //   at       → deviceTime  (ISO string)
+    //   type     → event       (lowercase snake_case)
+    const events = rawEvents.map(({ at, type, ...rest }) => ({
+      ...rest,
+      deviceTime: at instanceof Date ? at.toISOString() : at,
+      event: type ? type.toLowerCase() : type,
+    }));
+
     res.json({ events });
   } catch (err) {
     next(err);
