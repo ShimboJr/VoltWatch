@@ -11,6 +11,11 @@ import { notify }  from '../notify.js';
 import { sound }   from '../sound.js';
 import { timeAgo, formatDateTime } from '../format.js';
 import { S }       from '../strings.js';
+import {
+  isPushSupported, isIOS, isInstalled,
+  getPermissionState, getCurrentSubscription,
+  listSubscriptions, subscribe, showIOSInstallGuide,
+} from '../push.js';
 
 // ── State ─────────────────────────────────────────────────────
 
@@ -36,11 +41,14 @@ export function initAlertsPage() {
     _wireTabs();
     _wireFilters();
     _wireTestAlert();
+    _wirePushChannel();
     _subscribeStore();
   }
 
   _renderTab();
   if (_tab === 'history') _loadHistory();
+  // Refresh push panel every time the page is visited so it stays in sync.
+  _refreshPushChannel();
 }
 
 export function destroyAlertsPage() {
@@ -326,6 +334,116 @@ function _wireTestAlert() {
       btn.classList.remove('loading');
     }
   });
+}
+
+// ── Push channel panel ────────────────────────────────────────
+
+/**
+ * Wire the Enable button once; refreshPushChannel() is called on every
+ * page visit to keep the status label and button text in sync with the
+ * real browser push-subscription state.
+ */
+function _wirePushChannel() {
+  const btn = document.getElementById('btn-enable-push');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    // If push is already active, clicking "Disable" is not surfaced here;
+    // the button only handles the Enable flow.
+    const result = await subscribe();
+
+    btn.classList.remove('loading');
+    btn.disabled = false;
+
+    if (result === 'subscribed') {
+      notify.toast({ title: '✅ Push enabled', severity: 'ok', duration: 3000 });
+    } else if (result === 'ios-not-installed') {
+      showIOSInstallGuide();
+    } else if (result === 'denied') {
+      notify.toast({
+        title: 'Permission denied',
+        message: 'Allow notifications in your browser settings, then try again.',
+        severity: 'warning',
+      });
+    } else if (result === 'unsupported') {
+      notify.toast({ title: 'Not supported', message: 'This browser does not support push notifications.', severity: 'warning' });
+    } else if (result === 'error') {
+      notify.toast({ title: 'Push setup failed', message: 'Could not create subscription. Try again.', severity: 'warning' });
+    }
+
+    // Always refresh the panel so status reflects reality.
+    await _refreshPushChannel();
+  });
+}
+
+/**
+ * Read the real push-subscription state and update the Alerts page
+ * channel panel (status text + Enable/Disable button label) accordingly.
+ */
+async function _refreshPushChannel() {
+  const statusEl = document.getElementById('push-channel-status');
+  const btn      = document.getElementById('btn-enable-push');
+  if (!statusEl || !btn) return;
+
+  // Not supported in this browser.
+  if (!isPushSupported()) {
+    statusEl.textContent = 'Not supported';
+    btn.textContent      = 'Not supported';
+    btn.disabled         = true;
+    return;
+  }
+
+  // iOS PWA not installed yet.
+  if (isIOS() && !isInstalled()) {
+    statusEl.textContent = 'Install app first';
+    btn.textContent      = 'How to install';
+    btn.disabled         = false;
+    return;
+  }
+
+  const perm = getPermissionState();
+
+  if (perm === 'denied') {
+    statusEl.textContent = 'Blocked by browser';
+    btn.textContent      = 'Blocked';
+    btn.disabled         = true;
+    return;
+  }
+
+  // Check for an active backend subscription (most reliable signal).
+  try {
+    const subs   = await listSubscriptions();
+    const active = subs.length > 0;
+
+    if (active) {
+      statusEl.textContent = `Enabled (${subs.length} browser${subs.length > 1 ? 's' : ''})`;
+      statusEl.style.color = 'var(--c-ok)';
+      btn.textContent      = 'Enabled ✓';
+      btn.disabled         = true;   // managed from Settings; don't let them re-subscribe here
+    } else {
+      statusEl.textContent = 'Not enabled';
+      statusEl.style.color = '';
+      btn.textContent      = 'Enable';
+      btn.disabled         = false;
+    }
+  } catch {
+    // Network error — fall back to browser-side subscription object.
+    const sub = getCurrentSubscription();
+    if (sub) {
+      statusEl.textContent = 'Enabled';
+      statusEl.style.color = 'var(--c-ok)';
+      btn.textContent      = 'Enabled ✓';
+      btn.disabled         = true;
+    } else {
+      statusEl.textContent = 'Not enabled';
+      statusEl.style.color = '';
+      btn.textContent      = 'Enable';
+      btn.disabled         = false;
+    }
+  }
 }
 
 // ── Badge ─────────────────────────────────────────────────────
