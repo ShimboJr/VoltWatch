@@ -119,8 +119,8 @@ jobs:
           MONGODB_URI: mongodb://localhost:27017/voltwatch_ci
           JWT_SECRET: ci-e2e-secret-not-for-production
           OWNER_EMAIL: ci@voltwatch.local
-          # Pre-hashed "ci-password" with argon2id
-          OWNER_PASSWORD_HASH: $argon2id$v=19$m=65536,t=3,p=4$Y2ktc2FsdC1mb3ItY2k$fakeHashReplacedByBootstrap
+          # argon2id hash of "ci-password" — regenerate with: npm run hash-password ci-password
+          OWNER_PASSWORD_HASH: "$argon2id$v=19$m=65536,t=3,p=4$oZ+ehuGWw6ut2GtlLXDwDg$Awla5lgak0s7dHfy2xmStTjAWV33ctOIupiNDXyNuUQ"
           APP_ORIGIN: http://localhost:3000
           LOG_LEVEL: warn
           # Dummy VAPID keys to silence the "Web Push disabled" warning in CI
@@ -134,19 +134,20 @@ jobs:
       - name: Obtain device token (create device via API)
         id: device
         run: |
-          # Login
-          TOKEN=$(curl -sf -c /tmp/cookies.txt -X POST http://localhost:3001/api/v1/auth/login \
+          # Login — fail fast with the full response body if the request is not HTTP 200
+          LOGIN_RESP=$(curl -sf -c /tmp/cookies.txt -X POST http://localhost:3001/api/v1/auth/login \
             -H "Content-Type: application/json" \
             -H "X-Requested-With: voltwatch" \
-            -d '{"email":"ci@voltwatch.local","password":"ci-password"}' | jq -r '.ok')
-          echo "Login: $TOKEN"
+            -d '{"email":"ci@voltwatch.local","password":"ci-password"}') \
+            || { echo "Login request failed. Response: $LOGIN_RESP"; exit 1; }
+          echo "Login OK: $(echo "$LOGIN_RESP" | jq -r '.ok')"
 
           # Create device
           DEV=$(curl -sf -b /tmp/cookies.txt -X POST http://localhost:3001/api/v1/devices \
             -H "Content-Type: application/json" \
             -H "X-Requested-With: voltwatch" \
-            -d '{"name":"CI Device"}')
-          echo "device=$DEV" >> $GITHUB_OUTPUT
+            -d '{"name":"CI Device"}') \
+            || { echo "Create device failed. Response: $DEV"; exit 1; }
           DEVICE_ID=$(echo "$DEV" | jq -r '.device._id')
           DEVICE_TOKEN=$(echo "$DEV" | jq -r '.token')
           echo "device_id=$DEVICE_ID" >> $GITHUB_OUTPUT
