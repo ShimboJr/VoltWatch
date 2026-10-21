@@ -65,8 +65,9 @@ function _inQuietHours(settings = {}) {
   if (!settings.quietHours?.enabled) return false;
   const now   = new Date();
   const hhmm  = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const start = settings.quietHours.start || '22:00';
-  const end   = settings.quietHours.end   || '07:00';
+  // The DB schema stores quietHours.from / quietHours.to (not start/end)
+  const start = settings.quietHours.from || '22:00';
+  const end   = settings.quietHours.to   || '07:00';
 
   // Handle overnight ranges (e.g. 22:00 → 07:00)
   if (start > end) {
@@ -151,20 +152,24 @@ async function _sendToSubscription(sub, payload, options) {
 async function send(alert, device) {
   if (!_vapidReady) return;
 
-  // Fetch settings via the owning user (settings are per-user in VoltWatch)
-  // Import lazily to avoid circular deps
-  const { Settings } = await import('../../models/Settings.js').catch(() => ({ Settings: null }));
-  const settings = Settings
-    ? (await Settings.findOne({ userId: device.userId }).lean()) || {}
-    : {};
+  // VoltWatch is a single-owner app. Settings live on the User document.
+  // Device has no userId field — fetch the single owner directly.
+  const { User }        = await import('../../models/User.js');
+  const { DEFAULT_SETTINGS } = await import('../../models/User.js');
+  const owner   = await User.findOne({}).lean();
+  if (!owner) {
+    logger.warn('WebPush: no owner user found — skipping push');
+    return;
+  }
+  const settings = { ...DEFAULT_SETTINGS, ...(owner.settings || {}) };
 
   const built = buildPayload(alert, device, settings);
   if (!built) return; // quiet hours or paused
 
   const { payload, options } = built;
 
-  // Find all live subscriptions for this user
-  const subs = await PushSubscription.find({ userId: device.userId, dead: false }).lean();
+  // Find all live subscriptions — query by the owner user's _id
+  const subs = await PushSubscription.find({ userId: owner._id, dead: false }).lean();
 
   if (!subs.length) {
     logger.debug({ deviceId: device._id }, 'WebPush: no subscriptions');
