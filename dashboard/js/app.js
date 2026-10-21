@@ -35,8 +35,20 @@ window.__vw = {
 
 // ─── Theme ────────────────────────────────────────────────────
 
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme || 'dark');
+/**
+ * Apply a theme and, when the value comes from the server, persist it to
+ * localStorage so that the next cold load starts with the correct colour.
+ *
+ * @param {string} theme  'dark' | 'light' | 'amoled'
+ * @param {boolean} [fromServer=false]  Set true when the value is authoritative
+ *                                       (fetched from backend settings).
+ */
+function applyTheme(theme, fromServer = false) {
+  if (!theme) return;
+  document.documentElement.setAttribute('data-theme', theme);
+  // Keep localStorage in sync with the server-authoritative value so the
+  // NEXT cold load pre-applies the right theme before the API call returns.
+  if (fromServer) localStorage.setItem('vw-theme', theme);
 }
 
 // ─── Auth guard ───────────────────────────────────────────────
@@ -153,14 +165,17 @@ async function _afterLogin(userObj) {
     }
   } catch { /* no devices yet — handled by live page empty state */ }
 
-  // Load user settings (non-fatal)
-  try {
-    const cfg = await settings.get();
-    const s   = cfg?.settings || cfg || {};
-    store.set('settings', s);
-    applyTheme(s.theme);
-    sound.setVolume(s.alarmVolume ?? 0.8);
-  } catch { /* ignore */ }
+  // Load user settings (non-fatal).
+  // Skip if boot() already loaded them to avoid a redundant network round-trip.
+  if (!store.get('settings')?._loadedFromServer) {
+    try {
+      const cfg = await settings.get();
+      const s   = cfg?.settings || cfg || {};
+      store.set('settings', { ...s, _loadedFromServer: true });
+      applyTheme(s.theme, true);
+      sound.setVolume(s.alarmVolume ?? 0.8);
+    } catch { /* ignore */ }
+  }
 
   // Subscribe onboarding card to store changes
   const ob = document.getElementById('onboarding-card');
@@ -256,11 +271,26 @@ async function boot() {
     const me = await auth.me();
     // Session is valid — set auth flag so the router guard passes.
     _authed = true;
+
+    // ── Fetch the server-authoritative theme BEFORE revealing the app ──
+    // This eliminates the flash-of-wrong-theme that occurs when the
+    // backend theme differs from the stale localStorage value (e.g. the
+    // user changed the theme on another device).
+    try {
+      const cfg = await settings.get();
+      const s   = cfg?.settings || cfg || {};
+      // Persist to localStorage so the NEXT cold load is correct.
+      applyTheme(s.theme, true);
+      sound.setVolume(s.alarmVolume ?? 0.8);
+      // Mark as loaded so _afterLogin skips the redundant fetch.
+      store.set('settings', { ...s, _loadedFromServer: true });
+    } catch { /* non-fatal — localStorage theme already applied */ }
+
     // Start the router now that we know the user is authenticated.
     // It will navigate to #/live (or whatever hash is in the URL).
     router.start();
     _dismissLoader();
-    // Load devices, settings, etc. without blocking the render.
+    // Load devices, alerts, etc. (settings already loaded above).
     await _afterLogin(me.user || me);
   } catch {
     // Not authenticated — show the login page.
