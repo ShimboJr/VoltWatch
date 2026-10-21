@@ -144,13 +144,9 @@ async function ingestReading(device, body, { backfilled = false } = {}) {
     // after plannedStopUntil has elapsed (handled at read time in deriveStatus)
   }
 
-  // AC cycle management (minimal; alert engine in prompt 03 takes over)
-  if (body.event === 'ac_disconnected') {
-    deviceUpdate.currentCycleId = device.currentCycleId + 1;
-    deviceUpdate.firedLevels = [];
-  } else if (body.event === 'ac_connected') {
-    deviceUpdate.firedLevels = [];
-  }
+  // AC cycle management is handled exclusively by the alert engine (processReading below).
+  // Do NOT update currentCycleId or firedLevels here — doing so causes a double-increment
+  // that corrupts alert dedupeKeys and silently drops AC_DISCONNECTED alerts.
 
   await device.updateOne({ $set: deviceUpdate });
 
