@@ -291,7 +291,8 @@ function _createMainChart(labels, pcts, pts, c, unit, stepSize, segmentColour) {
           padding: 10,
           callbacks: {
             title: (items) => {
-              const d = new Date(items[0].label);
+              const pt = pts[items[0]?.dataIndex];
+              const d  = pt ? new Date(pt.deviceTime) : new Date(items[0].label);
               return formatDateTime(d, _tz);
             },
             label: (item) => {
