@@ -101,6 +101,7 @@ export class ApiError extends Error {
 export const api = {
   get:    (path, opts)        => _fetch(path, { method: 'GET', ...opts }),
   post:   (path, body, opts)  => _fetch(path, { method: 'POST',  body: JSON.stringify(body), ...opts }),
+  put:    (path, body, opts)  => _fetch(path, { method: 'PUT',   body: JSON.stringify(body), ...opts }),
   patch:  (path, body, opts)  => _fetch(path, { method: 'PATCH', body: JSON.stringify(body), ...opts }),
   delete: (path, opts)        => _fetch(path, { method: 'DELETE', ...opts }),
 };
@@ -145,11 +146,55 @@ export const devices = {
 
 // ── Settings ──────────────────────────────────────────────────
 
+/**
+ * Translate the frontend's field names to the backend schema names,
+ * and strip any keys the backend Zod schema doesn't accept (.strict()).
+ *
+ * Backend-accepted keys (from routes/settings.js schema):
+ *   thresholds, criticalLevel, criticalRepeatMin, offlineAfterSec,
+ *   staleAfterSec, intervalSec, mt5Alert, mt5DebounceSec, quietHours,
+ *   alarmSound, alarmVolume, vibrate, theme, timeZone, retentionDays
+ *
+ * Frontend-only keys that must be dropped: keepAwakeDefault, timeFormat,
+ *   configVersion (internal), alertsPaused (device-level, not settings).
+ */
+function _mapSettingsToBackend(patch) {
+  const out = {};
+  for (const [k, v] of Object.entries(patch)) {
+    switch (k) {
+      // ── Renames ──────────────────────────────────────────────────────────
+      case 'alertThresholds':       out.thresholds       = v; break;
+      case 'mt5AlertEnabled':       out.mt5Alert         = v; break;
+      case 'heartbeatIntervalSec':  out.intervalSec      = v; break;
+      case 'offlineThresholdSec':   out.offlineAfterSec  = v; break;
+      case 'vibration':             out.vibrate          = v; break;
+      case 'timezone':              out.timeZone         = v; break;
+      // quietHours: remap start/end → from/to
+      case 'quietHours': {
+        const qh = { ...v };
+        if ('start' in qh) { qh.from = qh.start; delete qh.start; }
+        if ('end'   in qh) { qh.to   = qh.end;   delete qh.end;   }
+        out.quietHours = qh;
+        break;
+      }
+      // ── Drop: no backend field / internal-only ────────────────────────
+      case 'keepAwakeDefault': break;
+      case 'timeFormat':       break;
+      case 'configVersion':    break;  // managed by backend, not writable via API
+      case 'alertsPaused':     break;  // device-level setting, not user settings
+      // ── Pass-through: already-correct backend names ────────────────────
+      default: out[k] = v;
+    }
+  }
+  return out;
+}
+
 export const settings = {
   get:           ()     => api.get('/settings'),
-  save:          (body) => api.patch('/settings', body),
-  update:        (body) => api.patch('/settings', body), // alias
-  deleteHistory: ()     => api.delete('/history'),
+  // Backend only has PUT /settings (no PATCH). Translate field names on the way out.
+  save:          (body) => api.put('/settings', _mapSettingsToBackend(body)),
+  update:        (body) => api.put('/settings', _mapSettingsToBackend(body)), // alias
+  deleteHistory: ()     => api.delete('/settings/history'),
 };
 
 // ── SSE stream URL ────────────────────────────────────────────

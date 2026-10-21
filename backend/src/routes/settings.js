@@ -4,6 +4,11 @@ import { requireAuth } from '../middleware/authSession.js';
 import { validate } from '../middleware/validate.js';
 import { User } from '../models/User.js';
 import { DEFAULT_SETTINGS } from '../models/User.js';
+import { Device } from '../models/Device.js';
+import { Reading } from '../models/Reading.js';
+import { ReadingRollup } from '../models/ReadingRollup.js';
+import { PowerEvent } from '../models/PowerEvent.js';
+import { Alert } from '../models/Alert.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -96,6 +101,28 @@ router.put('/', validate(settingsSchema), async (req, res, next) => {
     await user.save();
 
     res.json({ settings: user.settings });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── DELETE /api/v1/settings/history ──────────────────────────────────────────
+// Wipes all historical data (readings, rollups, events, alerts) for every
+// device owned by this account. Devices and settings are kept intact.
+router.delete('/history', async (req, res, next) => {
+  try {
+    // Find all device IDs for this owner (single-owner app — all devices belong to the owner)
+    const devices = await Device.find({}, { _id: 1 }).lean();
+    const deviceIds = devices.map((d) => d._id);
+
+    await Promise.all([
+      Reading.deleteMany({ deviceId: { $in: deviceIds } }),
+      ReadingRollup.deleteMany({ deviceId: { $in: deviceIds } }),
+      PowerEvent.deleteMany({ deviceId: { $in: deviceIds } }),
+      Alert.deleteMany({ deviceId: { $in: deviceIds } }),
+    ]);
+
+    res.json({ ok: true, deletedFor: deviceIds.length });
   } catch (err) {
     next(err);
   }
