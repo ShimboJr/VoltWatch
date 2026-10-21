@@ -106,6 +106,8 @@ async function ingestReading(device, body, { backfilled = false } = {}) {
     readingId: body.readingId,
     deviceTime,
     serverTime,
+    kind: body.kind ?? 'heartbeat',
+    event: body.event ?? null,
     percent: body.percent,
     charging: body.charging,
     acConnected: body.acConnected,

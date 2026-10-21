@@ -21,6 +21,10 @@ const readingSchema = new mongoose.Schema({
   mt5Running: { type: Boolean, required: true },
   uptimeSec: { type: Number, required: true },
   internetLatencyMs: { type: Number, default: null },
+  /** 'heartbeat' or 'event' — mirrors the agent payload kind field. */
+  kind: { type: String, default: 'heartbeat' },
+  /** Event type string (e.g. 'ac_disconnected'), null for heartbeats. */
+  event: { type: String, default: null },
   cycleId: { type: Number, default: 0 },
   /** True when this reading arrived via the batch upload endpoint. */
   backfilled: { type: Boolean, default: false },
