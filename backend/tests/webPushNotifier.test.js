@@ -53,7 +53,7 @@ const makeDevice = (overrides = {}) => ({
 });
 
 const makeSettings = (overrides = {}) => ({
-  quietHours:    { enabled: false, start: '22:00', end: '07:00' },
+  quietHours:    { enabled: false, from: '22:00', to: '07:00' },
   alarmVolume:   0.8,
   ...overrides,
 });
@@ -146,7 +146,7 @@ describe('buildPayload()', () => {
     const result = buildPayload(
       makeAlert({ level: 'high' }),
       makeDevice(),
-      makeSettings({ quietHours: { enabled: true, start: '22:00', end: '07:00' } }),
+      makeSettings({ quietHours: { enabled: true, from: '22:00', to: '07:00' } }),
     );
 
     global.Date = RealDate;
@@ -164,7 +164,7 @@ describe('buildPayload()', () => {
     const result = buildPayload(
       makeAlert({ level: 'critical' }),
       makeDevice(),
-      makeSettings({ quietHours: { enabled: true, start: '22:00', end: '07:00' } }),
+      makeSettings({ quietHours: { enabled: true, from: '22:00', to: '07:00' } }),
     );
 
     global.Date = RealDate;
@@ -190,7 +190,7 @@ describe('buildPayload()', () => {
       const result = buildPayload(
         makeAlert({ level: 'high' }),
         makeDevice(),
-        makeSettings({ quietHours: { enabled: true, start: '22:00', end: '07:00' } }),
+        makeSettings({ quietHours: { enabled: true, from: '22:00', to: '07:00' } }),
       );
 
       global.Date = RealDate;

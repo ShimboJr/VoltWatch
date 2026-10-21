@@ -48,40 +48,40 @@ describe('deriveStatus — unit tests', () => {
 
   test('NEVER_SEEN when lastSeenAt is null', async () => {
     const result = await deriveStatus(makeDevice({ lastSeenAt: null }), settings);
-    expect(result.status).toBe('NEVER_SEEN');
+    expect(result.deviceStatus).toBe('NEVER_SEEN');
     expect(result.severity).toBe('unknown');
   });
 
   test('ONLINE when age <= staleAfterSec (120s)', async () => {
     const lastSeenAt = new Date(Date.now() - 100_000); // 100s ago
     const result = await deriveStatus(makeDevice({ lastSeenAt }), settings);
-    expect(result.status).toBe('ONLINE');
+    expect(result.deviceStatus).toBe('ONLINE');
     expect(result.severity).toBe('ok');
   });
 
   test('ONLINE at exactly staleAfterSec boundary (120s)', async () => {
     const lastSeenAt = new Date(Date.now() - 120_000); // exactly 120s ago
     const result = await deriveStatus(makeDevice({ lastSeenAt }), settings);
-    expect(result.status).toBe('ONLINE');
+    expect(result.deviceStatus).toBe('ONLINE');
   });
 
   test('STALE when age is staleAfterSec+1 (121s)', async () => {
     const lastSeenAt = new Date(Date.now() - 121_000);
     const result = await deriveStatus(makeDevice({ lastSeenAt }), settings);
-    expect(result.status).toBe('STALE');
+    expect(result.deviceStatus).toBe('STALE');
     expect(result.severity).toBe('warning');
   });
 
   test('STALE when age is offlineAfterSec (180s)', async () => {
     const lastSeenAt = new Date(Date.now() - 180_000); // exactly 180s ago
     const result = await deriveStatus(makeDevice({ lastSeenAt }), settings);
-    expect(result.status).toBe('STALE');
+    expect(result.deviceStatus).toBe('STALE');
   });
 
   test('OFFLINE when age is offlineAfterSec+1 (181s)', async () => {
     const lastSeenAt = new Date(Date.now() - 181_000);
     const result = await deriveStatus(makeDevice({ lastSeenAt }), settings);
-    expect(result.status).toBe('OFFLINE');
+    expect(result.deviceStatus).toBe('OFFLINE');
     expect(result.severity).toBe('critical');
   });
 
@@ -89,7 +89,7 @@ describe('deriveStatus — unit tests', () => {
     const lastSeenAt = new Date(Date.now() - 500_000); // would be OFFLINE
     const plannedStopUntil = new Date(Date.now() + 60_000);
     const result = await deriveStatus(makeDevice({ lastSeenAt, plannedStopUntil }), settings);
-    expect(result.status).toBe('PLANNED_STOP');
+    expect(result.deviceStatus).toBe('PLANNED_STOP');
     expect(result.severity).toBe('ok');
   });
 
@@ -97,7 +97,7 @@ describe('deriveStatus — unit tests', () => {
     const lastSeenAt = new Date(Date.now() - 500_000);
     const plannedStopUntil = new Date(Date.now() - 60_000); // expired
     const result = await deriveStatus(makeDevice({ lastSeenAt, plannedStopUntil }), settings);
-    expect(result.status).toBe('OFFLINE');
+    expect(result.deviceStatus).toBe('OFFLINE');
   });
 
   test('power=CHARGING when charging=true', async () => {
@@ -146,7 +146,7 @@ describe('GET /api/v1/devices/:id/status', () => {
       .set('Cookie', cookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('NEVER_SEEN');
+    expect(res.body.deviceStatus).toBe('NEVER_SEEN');
     expect(res.body.severity).toBe('unknown');
   });
 
@@ -165,8 +165,8 @@ describe('GET /api/v1/devices/:id/status', () => {
       .set('Cookie', cookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('ONLINE');
-    expect(res.body.lastReading.percent).toBe(88);
+    expect(res.body.deviceStatus).toBe('ONLINE');
+    expect(res.body.latestReading.percent).toBe(88);
     expect(res.body.power).toBe('CHARGING');
   });
 
