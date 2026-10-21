@@ -85,7 +85,14 @@ function _render(status) {
   const pct     = r.percent != null ? Math.round(r.percent) : null;
   const ac      = r.acConnected ?? true;
   const charging = r.charging   ?? false;
-  const online   = status?.deviceStatus === 'online';
+  // The backend never emits 'online'; healthy states are 'ok', 'low_battery',
+  // 'critical_battery'. Treat the device as online unless it's explicitly
+  // marked offline/stale/never-connected (matching the logic in live.js).
+  const online   = status != null &&
+                   status.deviceStatus !== 'offline' &&
+                   status.deviceStatus !== 'stale' &&
+                   status.deviceStatus !== 'planned_stop' &&
+                   status.deviceStatus !== 'never_connected';
 
   const bg = pct != null
     ? _bgColour(pct, ac, charging)
