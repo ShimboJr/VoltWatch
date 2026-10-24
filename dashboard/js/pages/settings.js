@@ -716,8 +716,16 @@ async function _runHealthCheck() {
   try {
     const data = await fetch(`${BASE}/health`).then(r => r.json());
     if (res) {
-      res.textContent = data.status === 'ok' ? '✅ Healthy' : `⚠ ${data.status}`;
-      res.style.color = data.status === 'ok' ? 'var(--c-ok)' : 'var(--c-warning)';
+      if (data.ok && !data.deadManWarning) {
+        res.textContent = '✅ Healthy';
+        res.style.color = 'var(--c-ok)';
+      } else if (data.ok && data.deadManWarning) {
+        res.textContent = '⚠ No recent readings';
+        res.style.color = 'var(--c-warning)';
+      } else {
+        res.textContent = `⚠ DB ${data.db ?? 'unavailable'}`;
+        res.style.color = 'var(--c-warning)';
+      }
     }
   } catch (e) {
     if (res) { res.textContent = '❌ Unreachable'; res.style.color = 'var(--c-critical)'; }
