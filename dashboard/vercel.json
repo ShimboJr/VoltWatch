@@ -17,7 +17,7 @@
       "destination": "/index.html"
     },
     {
-      "source": "/((?!api/|app|sw\\.js|manifest\\.webmanifest|icons/|landing\\.css|landing-hero\\.png).*)",
+      "source": "/((?!api/|app|sw\\.js|manifest\\.webmanifest|icons/|landing\\.html|landing\\.css|landing-hero\\.png).+)",
       "destination": "/index.html"
     }
   ],
