@@ -5,7 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VoltWatch — Battery Monitor for Your Trading Laptop</title>
   <meta name="description" content="VoltWatch monitors your remote trading laptop's battery, MetaTrader 5 status, and power events in real-time. Get instant alerts before your laptop dies mid-trade." />
-  <meta name="theme-color" content="#0d1117" />
+  <meta name="theme-color" content="#ffffff" id="meta-theme-color" />
+
+  <!-- ⚡ Instant theme init — must run before CSS renders to prevent flash -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('vw-landing-theme');
+      // Default to light on first visit; only honour a saved preference
+      document.documentElement.setAttribute('data-theme', saved || 'light');
+    })();
+  </script>
 
   <!-- Open Graph -->
   <meta property="og:title" content="VoltWatch — Never Lose a Trade to a Dead Battery" />
@@ -32,11 +41,32 @@
     <a href="#how-it-works">How it works</a>
     <a href="https://github.com/ShimboJr/VoltWatch" target="_blank" rel="noopener">GitHub</a>
   </div>
+  <!-- Theme toggle + CTA buttons -->
   <div class="nav-ctas">
+    <!-- Theme toggle: shows moon in light mode, sun in dark mode -->
+    <button class="theme-toggle" id="theme-toggle"
+            aria-label="Toggle colour theme" title="Toggle light / dark mode">
+      <!-- Sun icon (shown in dark mode → click to go light) -->
+      <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <!-- Moon icon (shown in light mode → click to go dark) -->
+      <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
     <a href="/app#/login" class="btn-nav-ghost">Sign in</a>
     <a href="/app#/register" class="btn-nav-primary">Get started free</a>
   </div>
-  <button class="nav-mobile-toggle" id="nav-toggle" aria-label="Open menu">
+  <button class="nav-mobile-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
 </header>
@@ -297,6 +327,30 @@
 </footer>
 
 <script>
+// ── Theme management ──────────────────────────────────────────────────────────
+const THEME_KEY    = 'vw-landing-theme';
+const LIGHT        = 'light';
+const DARK         = 'dark';
+const metaColor    = document.getElementById('meta-theme-color');
+const themeToggle  = document.getElementById('theme-toggle');
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  metaColor.setAttribute('content', theme === DARK ? '#0d1117' : '#ffffff');
+  themeToggle.setAttribute('aria-label',
+    theme === DARK ? 'Switch to light mode' : 'Switch to dark mode');
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') || LIGHT;
+  const next    = current === DARK ? LIGHT : DARK;
+  applyTheme(next);
+  try { localStorage.setItem(THEME_KEY, next); } catch (_) { /* incognito */ }
+});
+
+// Apply correct aria-label on load (theme was already set by the head script)
+applyTheme(document.documentElement.getAttribute('data-theme') || LIGHT);
+
 // ── Sticky nav scroll effect ──────────────────────────────────────────────────
 const nav = document.getElementById('nav');
 window.addEventListener('scroll', () => {
@@ -308,7 +362,7 @@ const toggle = document.getElementById('nav-toggle');
 const drawer = document.getElementById('nav-drawer');
 toggle.addEventListener('click', () => {
   const open = drawer.classList.toggle('open');
-  toggle.setAttribute('aria-expanded', open);
+  toggle.setAttribute('aria-expanded', String(open));
 });
 drawer.querySelectorAll('a').forEach(a => {
   a.addEventListener('click', () => {
