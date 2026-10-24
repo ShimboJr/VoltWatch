@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -35,6 +35,19 @@
   <!-- Preconnect for fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- ⚡ Instant theme init — prevents flash of wrong theme on first render.
+       Reads app theme (vw-theme), falling back to landing page theme
+       (vw-landing-theme) so users arriving from the light landing page
+       see a light login/register page, not a jarring dark flash. -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('vw-theme')
+           || localStorage.getItem('vw-landing-theme')
+           || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 
   <!-- Backend API URL (overridable via window.VOLTWATCH_API before this loads) -->
   <script src="js/config.js?v=2"></script>
@@ -103,7 +116,7 @@
 
   <!-- ── Sidebar (≥ 992px) ─────────────────────────────────── -->
   <aside id="sidebar" role="navigation" aria-label="Main navigation">
-    <div class="sidebar-brand">⚡ VoltWatch</div>
+    <a class="sidebar-brand" href="/" aria-label="VoltWatch home">⚡ VoltWatch</a>
     <nav>
       <a class="sidebar-nav-item" data-route="#/live" href="#/live">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -146,7 +159,7 @@
 
     <!-- ── Topbar ─────────────────────────────────────────── -->
     <header id="topbar" role="banner">
-      <span class="topbar-brand">⚡ VoltWatch</span>
+      <a class="topbar-brand" href="/" aria-label="VoltWatch home">⚡ VoltWatch</a>
 
       <div class="device-switcher" id="device-switcher-wrap" style="display:none">
         <select id="device-select" aria-label="Switch device"></select>

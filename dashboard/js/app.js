@@ -49,7 +49,11 @@ function applyTheme(theme, fromServer = false) {
   document.documentElement.setAttribute('data-theme', theme);
   // Keep localStorage in sync with the server-authoritative value so the
   // NEXT cold load pre-applies the right theme before the API call returns.
-  if (fromServer) localStorage.setItem('vw-theme', theme);
+  if (fromServer) {
+    localStorage.setItem('vw-theme', theme);
+    // Also sync the landing-page key so returning to / shows the same theme.
+    localStorage.setItem('vw-landing-theme', theme);
+  }
 }
 
 // ─── Auth guard ───────────────────────────────────────────────
