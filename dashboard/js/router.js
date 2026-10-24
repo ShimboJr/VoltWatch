@@ -40,7 +40,10 @@ export const router = {
   },
 
   _dispatch() {
-    const hash = location.hash || '#/login';
+    const raw  = location.hash;
+    // When hash is empty (e.g. bare /app URL), decide where to send the user:
+    // the guard will redirect unauthed users to #/login, authed users to #/live.
+    const hash = raw && raw !== '#' ? raw : '#/live';
 
     if (_beforeEach) {
       const allow = _beforeEach(hash);

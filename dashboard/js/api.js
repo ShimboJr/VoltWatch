@@ -37,9 +37,11 @@ async function _fetch(path, options = {}, attempt = 0) {
 
     clearTimeout(tid);
 
-    // 401 → back to login
+    // 401 → back to login (but stay on public routes like register)
     if (res.status === 401) {
-      if (!location.hash.startsWith('#/login')) {
+      const PUBLIC = ['#/login', '#/register'];
+      const onPublic = PUBLIC.some(r => location.hash.startsWith(r));
+      if (!onPublic) {
         location.hash = '#/login';
       }
       throw new ApiError(401, 'Session expired. Please log in again.');
