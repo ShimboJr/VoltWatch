@@ -5,7 +5,19 @@
       "destination": "https://voltwatch-69ie.onrender.com/api/$1"
     },
     {
-      "source": "/((?!api/|sw\\.js|manifest\\.webmanifest|icons/).*)",
+      "source": "/",
+      "destination": "/landing.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/app/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/((?!api/|app|sw\\.js|manifest\\.webmanifest|icons/|landing\\.css|landing-hero\\.png).*)",
       "destination": "/index.html"
     }
   ],
@@ -31,7 +43,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://voltwatch-69ie.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://voltwatch-69ie.onrender.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     },
@@ -71,6 +83,15 @@
       ]
     },
     {
+      "source": "/landing.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
       "source": "/js/(.*)",
       "headers": [
         {
@@ -81,6 +102,15 @@
     },
     {
       "source": "/icons/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/landing-hero.png",
       "headers": [
         {
           "key": "Cache-Control",

@@ -14,15 +14,16 @@ router.use(requireAuth);
 // Must be defined BEFORE /:id routes
 router.post('/test', async (req, res, next) => {
   try {
-    const device = await Device.findOne({}, { _id: 1 }).lean();
+    const device = await Device.findOne({ userId: req.userId }, { _id: 1 }).lean();
     const deviceId = device?._id ?? new mongoose.Types.ObjectId();
 
     // Remove any previously unresolved test alerts so the unique dedupeKey
     // constraint is never triggered on repeated clicks.
-    await Alert.deleteMany({ type: 'TEST', state: { $in: ['active', 'acknowledged'] } });
+    await Alert.deleteMany({ userId: req.userId, type: 'TEST', state: { $in: ['active', 'acknowledged'] } });
 
     const alert = await Alert.create({
       deviceId,
+      userId: req.userId,
       type:      'TEST',
       severity:  'info',
       message:   '✅ This is a test alert from VoltWatch. Notifications are working.',
@@ -58,7 +59,7 @@ router.post('/test', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const { state = 'active', limit = '50' } = req.query;
-    const query = {};
+    const query = { userId: req.userId };
 
     if (state === 'active') {
       query.state = 'active';
@@ -135,7 +136,7 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Alert not found' } });
     }
 
-    const alert = await Alert.findByIdAndDelete(id);
+    const alert = await Alert.findOneAndDelete({ _id: id, userId: req.userId });
 
     if (!alert) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Alert not found' } });

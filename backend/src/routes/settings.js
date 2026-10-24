@@ -108,12 +108,12 @@ router.put('/', validate(settingsSchema), async (req, res, next) => {
 
 // ── DELETE /api/v1/settings/history ──────────────────────────────────────────
 // Wipes all historical data (readings, rollups, events, alerts) for every
-// device owned by this account. Devices and settings are kept intact.
+// device owned by this user. Devices and settings are kept intact.
 router.delete('/history', async (req, res, next) => {
   try {
-    // Find all device IDs for this owner (single-owner app — all devices belong to the owner)
-    const devices = await Device.find({}, { _id: 1 }).lean();
-    const deviceIds = devices.map((d) => d._id);
+    // Find all device IDs for this user
+    const ownedDevices = await Device.find({ userId: req.userId }, { _id: 1 }).lean();
+    const deviceIds = ownedDevices.map((d) => d._id);
 
     await Promise.all([
       Reading.deleteMany({ deviceId: { $in: deviceIds } }),
@@ -129,3 +129,4 @@ router.delete('/history', async (req, res, next) => {
 });
 
 export default router;
+

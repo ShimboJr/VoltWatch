@@ -10,6 +10,12 @@ const readingSchema = new mongoose.Schema({
     ref: 'Device',
     required: true,
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
   /** UUID sent by the agent; used for idempotency. Unique per device. */
   readingId: { type: String, required: true },
   deviceTime: { type: Date, required: true },

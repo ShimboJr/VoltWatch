@@ -6,6 +6,12 @@ const rollupSchema = new mongoose.Schema({
     ref: 'Device',
     required: true,
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
   /** UTC floor of the hour this bucket covers. */
   hour: { type: Date, required: true },
   minPercent: { type: Number, required: true },

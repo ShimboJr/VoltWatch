@@ -21,6 +21,12 @@ const powerEventSchema = new mongoose.Schema({
     ref: 'Device',
     required: true,
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
   type: { type: String, required: true, enum: POWER_EVENT_TYPES },
   at: { type: Date, required: true },
   percent: { type: Number, default: null },

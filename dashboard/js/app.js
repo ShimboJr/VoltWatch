@@ -12,6 +12,7 @@ import { auth, devices, settings } from './api.js';
 import { notify }  from './notify.js';
 import { sound }   from './sound.js';
 import { initLoginPage }   from './pages/login.js';
+import { initRegisterPage } from './pages/register.js';
 import { initLivePage }    from './pages/live.js';
 import { initHistoryPage } from './pages/history.js';
 import { initTimelinePage, destroyTimelinePage } from './pages/timeline.js';
@@ -57,6 +58,7 @@ let _authed = false;
 
 router.beforeEach((hash) => {
   if (hash.startsWith('#/login')) return true;
+  if (hash.startsWith('#/register')) return true;
   if (!_authed) {
     router.go('#/login');
     return false;
@@ -78,6 +80,10 @@ router
   .on('#/login', () => {
     showPage('page-login');
     initLoginPage();
+  })
+  .on('#/register', () => {
+    showPage('page-register');
+    initRegisterPage();
   })
   .on('#/live', () => {
     showPage('page-live');

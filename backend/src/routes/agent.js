@@ -103,6 +103,7 @@ async function ingestReading(device, body, { backfilled = false } = {}) {
 
   const reading = await Reading.create({
     deviceId: device._id,
+    userId: device.userId,
     readingId: body.readingId,
     deviceTime,
     serverTime,
@@ -171,7 +172,7 @@ async function ingestReading(device, body, { backfilled = false } = {}) {
 
   // Broadcast status update over SSE after every live accepted reading
   if (live) {
-    const user = await User.findOne({}).lean();
+    const user = await User.findById(device.userId).lean();
     const settings = user ? { ...DEFAULT_SETTINGS, ...user.settings } : { ...DEFAULT_SETTINGS };
     await broadcastStatus(device._id, settings);
   }
@@ -190,7 +191,7 @@ router.post('/heartbeat', validate(readingSchema), async (req, res, next) => {
       return res.json({ duplicate: true });
     }
 
-    const user = await User.findOne({}).lean();
+    const user = await User.findById(req.device.userId).lean();
     const settings = user ? { ...DEFAULT_SETTINGS, ...user.settings } : DEFAULT_SETTINGS;
 
     res.json({

@@ -190,7 +190,11 @@
           <p>Battery monitor for your trading laptop</p>
         </div>
 
-        <div id="lockout-msg" class="lockout-msg" role="alert"></div>
+        <div id="lockout-msg" class="lockout-msg" role="alert" style="display:none"></div>
+        <div id="unverified-msg" role="alert" style="display:none;margin-bottom:var(--space-3);padding:var(--space-3);background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--c-warning)">
+          &#x26A0;&#xFE0F; Please verify your email before signing in.
+          <div style="margin-top:var(--space-2)"><button id="resend-verification-btn" class="btn btn-ghost btn-sm" style="font-size:var(--text-xs)">Resend verification email</button></div>
+        </div>
 
         <form id="login-form" novalidate>
           <div class="form-group">
@@ -223,6 +227,7 @@
           </div>
 
           <div class="form-error" id="login-error" role="alert"></div>
+        <p style="text-align:center;margin-top:var(--space-3);font-size:var(--text-sm);color:var(--text-muted)">Don&#x2019;t have an account? <a href="#/register" id="goto-register" style="color:var(--c-accent);text-decoration:none;font-weight:600">Create one &#x2192;</a></p>
 
           <button type="submit" class="btn btn-primary" id="login-submit"
                   style="width:100%;margin-top:var(--space-2)">

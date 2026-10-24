@@ -16,8 +16,8 @@ import { logger } from '../middleware/logger.js';
 // ─── Owner settings loader ────────────────────────────────────────────────────
 
 /** @returns {Promise<object>} merged settings */
-async function getSettings() {
-  const user = await User.findOne({}).lean();
+async function getSettings(userId) {
+  const user = userId ? await User.findById(userId).lean() : await User.findOne({}).lean();
   return user ? { ...DEFAULT_SETTINGS, ...user.settings } : { ...DEFAULT_SETTINGS };
 }
 
@@ -33,7 +33,7 @@ async function getSettings() {
 async function applyEffect(effect, device) {
   switch (effect.type) {
     case 'CREATE_ALERT': {
-      const data = { ...effect.data, deviceId: device._id };
+      const data = { ...effect.data, deviceId: device._id, userId: device.userId };
       let alert;
       try {
         alert = await Alert.create(data);
@@ -65,7 +65,7 @@ async function applyEffect(effect, device) {
 
     case 'RECORD_EVENT': {
       try {
-        await PowerEvent.create({ ...effect.data, deviceId: device._id });
+        await PowerEvent.create({ ...effect.data, deviceId: device._id, userId: device.userId });
       } catch (err) {
         if (err.code === 11000) return null; // Unlikely but safe
         throw err;
@@ -100,7 +100,7 @@ export async function processReading(device, reading, { live = true } = {}) {
   if (!live) return; // Backfill check is also inside evaluate, but short-circuit here
 
   try {
-    const settings = await getSettings();
+    const settings = await getSettings(device.userId);
 
     // Pre-fetch the one piece of DB state evaluate needs
     const heartbeatLostAlert = await Alert.findOne({

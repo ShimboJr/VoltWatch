@@ -15,6 +15,12 @@ const lastReadingSchema = new mongoose.Schema(
 );
 
 const deviceSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
   name: { type: String, required: true, trim: true },
   hostname: { type: String, default: null },
   os: { type: String, default: null },

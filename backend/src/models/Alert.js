@@ -9,6 +9,12 @@ const alertSchema = new mongoose.Schema({
     ref: 'Device',
     required: true,
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
   type: { type: String, required: true },
   severity: { type: String, enum: ALERT_SEVERITIES, required: true },
   /** Battery threshold level, if applicable (e.g. 30 for the 30% threshold). */

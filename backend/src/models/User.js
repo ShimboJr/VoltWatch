@@ -29,6 +29,13 @@ const userSchema = new mongoose.Schema({
     trim: true,
   },
   passwordHash: { type: String, required: true },
+  name: { type: String, default: '' },
+  /** True once the user has clicked the verification link in their email. */
+  emailVerified: { type: Boolean, default: false },
+  /** SHA-256 hash of the one-time email verification token. Cleared after use. */
+  verificationToken: { type: String, default: null },
+  /** When the verification token expires (24 h after issue). */
+  verificationTokenExpiry: { type: Date, default: null },
   /** All user-configurable settings (spec section 7). */
   settings: {
     type: mongoose.Schema.Types.Mixed,
@@ -42,3 +49,4 @@ const userSchema = new mongoose.Schema({
 });
 
 export const User = mongoose.model('User', userSchema);
+

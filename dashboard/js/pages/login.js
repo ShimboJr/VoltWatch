@@ -11,15 +11,30 @@ export function initLoginPage() {
   const page = document.getElementById('page-login');
   if (!page) return;
 
-  const form        = page.querySelector('#login-form');
-  const emailEl     = page.querySelector('#login-email');
-  const passEl      = page.querySelector('#login-password');
-  const showPassBtn = page.querySelector('#toggle-password');
-  const submitBtn   = page.querySelector('#login-submit');
-  const errorEl     = page.querySelector('#login-error');
-  const lockoutEl   = page.querySelector('#lockout-msg');
+  const form         = page.querySelector('#login-form');
+  const emailEl      = page.querySelector('#login-email');
+  const passEl       = page.querySelector('#login-password');
+  const showPassBtn  = page.querySelector('#toggle-password');
+  const submitBtn    = page.querySelector('#login-submit');
+  const errorEl      = page.querySelector('#login-error');
+  const lockoutEl    = page.querySelector('#lockout-msg');
+  const unverifiedEl = page.querySelector('#unverified-msg');
+  const resendBtn    = page.querySelector('#resend-verification-btn');
+  const signupLink   = page.querySelector('#goto-register');
 
-  // Show/hide password
+  // ── Handle ?verified= query param on page load ──────────────────────────
+  const params = new URLSearchParams(location.search);
+  const verified = params.get('verified');
+  if (verified === '1') {
+    notify.toast({ title: '✅ Email verified!', message: 'You can now sign in.', severity: 'ok', duration: 5000 });
+    // Clean up the URL param
+    history.replaceState({}, '', location.pathname + location.hash.split('?')[0]);
+  } else if (verified === 'error') {
+    _setError(errorEl, 'Verification link is invalid or has expired. Request a new one below.');
+    history.replaceState({}, '', location.pathname + location.hash.split('?')[0]);
+  }
+
+  // ── Show/hide password ───────────────────────────────────────────────────
   showPassBtn?.addEventListener('click', () => {
     const isText = passEl.type === 'text';
     passEl.type = isText ? 'password' : 'text';
@@ -27,6 +42,34 @@ export function initLoginPage() {
     showPassBtn.textContent = isText ? '👁' : '🙈';
   });
 
+  // ── Sign up link ─────────────────────────────────────────────────────────
+  signupLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    router.go('#/register');
+  });
+
+  // ── Resend verification email ────────────────────────────────────────────
+  resendBtn?.addEventListener('click', async () => {
+    const email = emailEl.value.trim();
+    if (!email) {
+      _setError(errorEl, 'Enter your email above, then click resend.');
+      return;
+    }
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending…';
+    try {
+      await auth.resendVerification(email);
+      notify.toast({ title: 'Verification email sent!', message: 'Check your inbox.', severity: 'ok', duration: 4000 });
+      if (unverifiedEl) unverifiedEl.style.display = 'none';
+    } catch {
+      notify.toast({ title: 'Could not resend', message: 'Please try again later.', severity: 'warning', duration: 4000 });
+    } finally {
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend verification email';
+    }
+  });
+
+  // ── Login form ───────────────────────────────────────────────────────────
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email    = emailEl.value.trim();
@@ -39,20 +82,24 @@ export function initLoginPage() {
 
     _setLoading(submitBtn, true);
     _setError(errorEl, '');
+    if (unverifiedEl) unverifiedEl.style.display = 'none';
+    if (lockoutEl) lockoutEl.style.display = 'none';
 
     try {
       const data = await auth.login(email, password);
-      // Set authed state and load data without a page reload.
-      // window.__vw.afterLogin() sets _authed=true, fetches devices/settings,
-      // then navigates to #/live — eliminating the reload race condition.
       await window.__vw.afterLogin(data?.user ?? { email });
     } catch (err) {
       _setLoading(submitBtn, false);
       if (err.status === 401) {
         _setError(errorEl, 'Incorrect email or password.');
+      } else if (err.status === 403 && err.message?.includes('verify')) {
+        _setError(errorEl, '');
+        if (unverifiedEl) unverifiedEl.style.display = '';
       } else if (err.status === 429) {
-        lockoutEl?.classList.add('visible');
-        lockoutEl.textContent = 'Too many attempts. Please wait a few minutes.';
+        if (lockoutEl) {
+          lockoutEl.style.display = '';
+          lockoutEl.textContent = 'Too many attempts. Please wait a few minutes.';
+        }
         _setError(errorEl, '');
       } else {
         _setError(errorEl, err.message || 'Login failed. Check your connection.');

@@ -27,6 +27,7 @@ export async function bootstrapOwner() {
   await User.create({
     email: ownerEmail,
     passwordHash: ownerPasswordHash,
+    emailVerified: true,  // Seeded owner bypasses email verification
     settings: { ...DEFAULT_SETTINGS },
   });
 

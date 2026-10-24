@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoltWatch — Battery Monitor for Your Trading Laptop</title>
+  <meta name="description" content="VoltWatch monitors your remote trading laptop's battery, MetaTrader 5 status, and power events in real-time. Get instant alerts before your laptop dies mid-trade." />
+  <meta name="theme-color" content="#0d1117" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="VoltWatch — Never Lose a Trade to a Dead Battery" />
+  <meta property="og:description" content="Real-time battery monitoring and alerts for remote trading laptops. Set up in 5 minutes. Free forever." />
+  <meta property="og:type" content="website" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="landing.css" />
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────────────────────────── -->
+<header class="nav" id="nav">
+  <a class="nav-brand" href="/">⚡ VoltWatch</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="https://github.com/ShimboJr/VoltWatch" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="nav-ctas">
+    <a href="/app#/login" class="btn-nav-ghost">Sign in</a>
+    <a href="/app#/register" class="btn-nav-primary">Get started free</a>
+  </div>
+  <button class="nav-mobile-toggle" id="nav-toggle" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<!-- Mobile nav drawer -->
+<div class="nav-mobile-drawer" id="nav-drawer">
+  <a href="#features" class="drawer-link">Features</a>
+  <a href="#how-it-works" class="drawer-link">How it works</a>
+  <a href="https://github.com/ShimboJr/VoltWatch" target="_blank" rel="noopener" class="drawer-link">GitHub</a>
+  <a href="/app#/login" class="drawer-link">Sign in</a>
+  <a href="/app#/register" class="btn-drawer-primary">Get started free →</a>
+</div>
+
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<section class="hero" id="hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="hero-glow hero-glow-2" aria-hidden="true"></div>
+
+  <div class="container">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      Free &amp; open source · No credit card required
+    </div>
+
+    <h1 class="hero-title">
+      Never lose a trade<br />
+      to a <span class="gradient-text">dead battery</span>
+    </h1>
+
+    <p class="hero-sub">
+      VoltWatch monitors your remote trading laptop's battery, MetaTrader 5 status,
+      and power events in real-time — with instant alerts before anything goes wrong.
+    </p>
+
+    <div class="hero-ctas">
+      <a href="/app#/register" class="btn-primary-lg">
+        Start monitoring free
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <a href="#how-it-works" class="btn-ghost-lg">
+        See how it works
+      </a>
+    </div>
+
+    <div class="hero-social-proof">
+      <div class="proof-item">
+        <span class="proof-num">~15s</span>
+        <span class="proof-label">backend wake time</span>
+      </div>
+      <div class="proof-divider" aria-hidden="true"></div>
+      <div class="proof-item">
+        <span class="proof-num">&lt;5 min</span>
+        <span class="proof-label">to first alert</span>
+      </div>
+      <div class="proof-divider" aria-hidden="true"></div>
+      <div class="proof-item">
+        <span class="proof-num">100%</span>
+        <span class="proof-label">free forever</span>
+      </div>
+    </div>
+
+    <div class="hero-screenshot">
+      <div class="screenshot-glow" aria-hidden="true"></div>
+      <div class="screenshot-frame">
+        <div class="screenshot-bar" aria-hidden="true">
+          <span class="bar-dot bar-red"></span>
+          <span class="bar-dot bar-yellow"></span>
+          <span class="bar-dot bar-green"></span>
+          <span class="bar-url">voltwatch-dashboard.vercel.app/app</span>
+        </div>
+        <img src="landing-hero.png" alt="VoltWatch dashboard showing battery at 73%, charging status, and live charts" class="screenshot-img" loading="eager" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ──────────────────────────────────────────────────────────── -->
+<section class="features section" id="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge">Features</div>
+      <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+      <p class="section-sub">Built specifically for traders who need their laptop online and charged — always.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Real-time monitoring</h3>
+        <p>Live battery percentage, charging state, AC connection, and MetaTrader 5 status updated every 30–60 seconds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔔</div>
+        <h3>Smart alerts</h3>
+        <p>Configurable low-battery thresholds (e.g. 80%, 50%, 20%), AC disconnect warnings, offline detection, and MT5 alerts.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>Push notifications</h3>
+        <p>Receive browser push notifications on any device — phone, tablet, or second laptop — even when the tab is closed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>History &amp; insights</h3>
+        <p>Battery history charts, AC cycle analysis, uptime tracking, and rollup insights across 24h, 7d, or 30d windows.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌙</div>
+        <h3>Quiet hours</h3>
+        <p>Set a quiet window so alerts don't wake you at 3am — unless it's a critical battery level that can't wait.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Per-user isolation</h3>
+        <p>Full multi-user support — each account sees only their own devices, data, and alert history. Nothing shared.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ───────────────────────────────────────────────────────── -->
+<section class="how-it-works section" id="how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge">Setup</div>
+      <h2 class="section-title">Up and running in 5 minutes</h2>
+      <p class="section-sub">No servers to manage. No complex config. Just install the agent and you're done.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num" aria-hidden="true">1</div>
+        <div class="step-content">
+          <h3>Create your account</h3>
+          <p>Register with your email — no credit card needed. Verify your address and sign in to your personal dashboard.</p>
+        </div>
+        <div class="step-icon" aria-hidden="true">🖥️</div>
+      </div>
+      <div class="step-connector" aria-hidden="true"></div>
+      <div class="step">
+        <div class="step-num" aria-hidden="true">2</div>
+        <div class="step-content">
+          <h3>Add your laptop</h3>
+          <p>Go to the Devices page, create a new device, and copy the auto-generated secret token. It's shown once — keep it safe.</p>
+        </div>
+        <div class="step-icon" aria-hidden="true">💻</div>
+      </div>
+      <div class="step-connector" aria-hidden="true"></div>
+      <div class="step">
+        <div class="step-num" aria-hidden="true">3</div>
+        <div class="step-content">
+          <h3>Install the Python agent</h3>
+          <p>Run the lightweight Python agent on your trading laptop. It reads battery data and sends heartbeats to VoltWatch every 30s.</p>
+        </div>
+        <div class="step-icon" aria-hidden="true">⚡</div>
+      </div>
+    </div>
+
+    <div class="steps-cta">
+      <a href="/app#/register" class="btn-primary-lg">Get started now</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Alerts showcase ─────────────────────────────────────────────────────── -->
+<section class="alerts-showcase section" id="alerts">
+  <div class="container">
+    <div class="alerts-layout">
+      <div class="alerts-text">
+        <div class="section-badge">Alerts</div>
+        <h2 class="section-title">Know before it's too late</h2>
+        <p class="section-sub" style="text-align:left">VoltWatch watches your laptop so you don't have to. The moment something changes, you'll know about it — wherever you are.</p>
+        <ul class="alerts-list">
+          <li><span class="al-icon">🔴</span><div><strong>Critical battery</strong><br/>Full-screen takeover when battery hits critical level</div></li>
+          <li><span class="al-icon">🟠</span><div><strong>AC disconnected</strong><br/>Instant alert the moment your charger is unplugged</div></li>
+          <li><span class="al-icon">🟡</span><div><strong>Heartbeat lost</strong><br/>Notified when your laptop goes offline unexpectedly</div></li>
+          <li><span class="al-icon">📈</span><div><strong>MT5 stopped</strong><br/>Alert when MetaTrader 5 closes or crashes</div></li>
+        </ul>
+        <a href="/app#/register" class="btn-primary-lg" style="margin-top:var(--space-4);display:inline-flex">Enable alerts →</a>
+      </div>
+      <div class="alerts-demo" aria-hidden="true">
+        <div class="alert-card alert-critical">
+          <div class="alert-header">
+            <span class="alert-sev sev-critical">🔴 Critical</span>
+            <span class="alert-time">just now</span>
+          </div>
+          <div class="alert-title">Battery at 15%</div>
+          <div class="alert-body">Trading Laptop is running critically low on battery. Connect charger immediately.</div>
+        </div>
+        <div class="alert-card alert-high">
+          <div class="alert-header">
+            <span class="alert-sev sev-high">🟠 High</span>
+            <span class="alert-time">2 min ago</span>
+          </div>
+          <div class="alert-title">AC power disconnected</div>
+          <div class="alert-body">Trading Laptop is now running on battery. Battery at 89%.</div>
+        </div>
+        <div class="alert-card alert-medium">
+          <div class="alert-header">
+            <span class="alert-sev sev-medium">🟡 Medium</span>
+            <span class="alert-time">15 min ago</span>
+          </div>
+          <div class="alert-title">Battery below 50%</div>
+          <div class="alert-body">Trading Laptop battery has dropped below the 50% threshold.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Final CTA ──────────────────────────────────────────────────────────── -->
+<section class="final-cta section">
+  <div class="container">
+    <div class="cta-card">
+      <div class="cta-glow" aria-hidden="true"></div>
+      <h2 class="cta-title">Start monitoring in 5 minutes</h2>
+      <p class="cta-sub">It's free, open source, and takes less than 5 minutes to set up. Your first alert could save your next trade.</p>
+      <div class="cta-actions">
+        <a href="/app#/register" class="btn-primary-xl">Create free account</a>
+        <a href="https://github.com/ShimboJr/VoltWatch" target="_blank" rel="noopener" class="btn-ghost-xl">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo">⚡ VoltWatch</a>
+        <p>Battery monitor for remote trading laptops. Free &amp; open source forever.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <div class="footer-col-title">Product</div>
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="/app#/register">Get started</a>
+          <a href="/app#/login">Sign in</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Resources</div>
+          <a href="https://github.com/ShimboJr/VoltWatch" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/ShimboJr/VoltWatch/blob/main/docs/runbook.md" target="_blank" rel="noopener">Runbook</a>
+          <a href="https://github.com/ShimboJr/VoltWatch/issues" target="_blank" rel="noopener">Report a bug</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 VoltWatch. MIT License.</span>
+      <span>Made with ⚡ for traders.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Sticky nav scroll effect ──────────────────────────────────────────────────
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('nav-scrolled', window.scrollY > 20);
+}, { passive: true });
+
+// ── Mobile menu toggle ────────────────────────────────────────────────────────
+const toggle = document.getElementById('nav-toggle');
+const drawer = document.getElementById('nav-drawer');
+toggle.addEventListener('click', () => {
+  const open = drawer.classList.toggle('open');
+  toggle.setAttribute('aria-expanded', open);
+});
+drawer.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    drawer.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  });
+});
+
+// ── Animate-on-scroll (Intersection Observer) ─────────────────────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.feature-card, .step, .alert-card').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

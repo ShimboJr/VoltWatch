@@ -109,11 +109,13 @@ export const api = {
 // ── Auth endpoints ────────────────────────────────────────────
 
 export const auth = {
-  login:          (email, password) => api.post('/auth/login',  { email, password }),
-  logout:         ()                => api.post('/auth/logout', {}),
-  me:             ()                => api.get('/auth/me'),
-  changePassword: (current, next)   => api.post('/auth/change-password', { current, next }),
-  signOutAll:     ()                => api.post('/auth/sign-out-all', {}),
+  login:               (email, password)   => api.post('/auth/login',  { email, password }),
+  logout:              ()                  => api.post('/auth/logout', {}),
+  me:                  ()                  => api.get('/auth/me'),
+  changePassword:      (current, next)     => api.post('/auth/change-password', { current, next }),
+  signOutAll:          ()                  => api.post('/auth/sign-out-all', {}),
+  register:            (name, email, password) => api.post('/auth/register', { name, email, password }),
+  resendVerification:  (email)             => api.post('/auth/resend-verification', { email }),
 };
 
 // ── Status / live data ────────────────────────────────────────

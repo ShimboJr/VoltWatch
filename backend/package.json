@@ -11,7 +11,8 @@
     "dev": "node --watch src/server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --forceExit",
     "hash-password": "node scripts/hash-password.js",
-    "gen-vapid": "node scripts/gen-vapid.js"
+    "gen-vapid": "node scripts/gen-vapid.js",
+    "migrate": "node scripts/migrateToMultiUser.js"
   },
   "dependencies": {
     "argon2": "^0.31.2",
@@ -25,6 +26,7 @@
     "mongoose": "^8.4.3",
     "pino": "^9.2.0",
     "pino-http": "^10.2.0",
+    "resend": "^6.34.1",
     "web-push": "^3.6.7",
     "zod": "^3.23.8"
   },

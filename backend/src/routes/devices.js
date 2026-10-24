@@ -20,8 +20,8 @@ router.use(requireAuth);
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: resolve owner settings (falling back to defaults)
 // ─────────────────────────────────────────────────────────────────────────────
-async function getSettings() {
-  const user = await User.findOne({}).lean();
+async function getSettings(userId) {
+  const user = await User.findById(userId).lean();
   return user ? { ...DEFAULT_SETTINGS, ...user.settings } : { ...DEFAULT_SETTINGS };
 }
 
@@ -173,7 +173,7 @@ async function getDownsampledReadings(deviceId, range, settings) {
 // GET /api/v1/devices
 router.get('/', async (req, res, next) => {
   try {
-    const raw = await Device.find({}, { tokenHash: 0 }).lean();
+    const raw = await Device.find({ userId: req.userId }, { tokenHash: 0 }).lean();
     // Remap lastReading → latestReading to match the frontend field name
     const devices = raw.map(({ lastReading, ...d }) => ({
       ...d,
@@ -192,7 +192,7 @@ router.post(
   async (req, res, next) => {
     try {
       const { token, tokenHash } = generateToken();
-      const device = await Device.create({ name: req.body.name, tokenHash });
+      const device = await Device.create({ userId: req.userId, name: req.body.name, tokenHash });
       const { tokenHash: _omit, ...safeDevice } = device.toObject();
       res.status(201).json({ device: safeDevice, token });
     } catch (err) {
@@ -215,8 +215,8 @@ router.patch(
       const id = parseId(req.params.id);
       if (!id) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
 
-      const device = await Device.findByIdAndUpdate(
-        id,
+      const device = await Device.findOneAndUpdate(
+        { _id: id, userId: req.userId },
         { $set: req.body },
         { new: true, projection: { tokenHash: 0 } },
       ).lean();
@@ -239,8 +239,8 @@ router.post('/:id/rotate-token', async (req, res, next) => {
     if (!id) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
 
     const { token, tokenHash } = generateToken();
-    const device = await Device.findByIdAndUpdate(
-      id,
+    const device = await Device.findOneAndUpdate(
+      { _id: id, userId: req.userId },
       { $set: { tokenHash, tokenRotatedAt: new Date() } },
       { new: true },
     );
@@ -261,7 +261,7 @@ router.delete('/:id', async (req, res, next) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
 
-    const device = await Device.findById(id);
+    const device = await Device.findOne({ _id: id, userId: req.userId });
     if (!device) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
     }
@@ -286,13 +286,16 @@ router.get('/:id/status', async (req, res, next) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
 
-    const [device, settings] = await Promise.all([Device.findById(id).lean(), getSettings()]);
+    const [device, userSettings] = await Promise.all([
+      Device.findOne({ _id: id, userId: req.userId }).lean(),
+      getSettings(req.userId),
+    ]);
 
     if (!device) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
     }
 
-    const status = await deriveStatus(device, settings);
+    const status = await deriveStatus(device, userSettings);
     res.json({ deviceId: id.toString(), ...status });
   } catch (err) {
     next(err);
@@ -312,12 +315,15 @@ router.get('/:id/readings', async (req, res, next) => {
       });
     }
 
-    const [device, settings] = await Promise.all([Device.findById(id), getSettings()]);
+    const [device, userSettings] = await Promise.all([
+      Device.findOne({ _id: id, userId: req.userId }),
+      getSettings(req.userId),
+    ]);
     if (!device) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
     }
 
-    const result = await getDownsampledReadings(id, range, settings);
+    const result = await getDownsampledReadings(id, range, userSettings);
     res.json(result);
   } catch (err) {
     next(err);
@@ -330,7 +336,7 @@ router.get('/:id/events', async (req, res, next) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
 
-    const device = await Device.findById(id);
+    const device = await Device.findOne({ _id: id, userId: req.userId });
     if (!device) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
     }
@@ -374,7 +380,7 @@ router.get('/:id/insights', async (req, res, next) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
 
-    const device = await Device.findById(id);
+    const device = await Device.findOne({ _id: id, userId: req.userId });
     if (!device) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Device not found' } });
     }
@@ -389,8 +395,8 @@ router.get('/:id/insights', async (req, res, next) => {
       });
     }
 
-    const settings = await getSettings();
-    const flat = await computeInsights(id, range, settings);
+    const userSettings = await getSettings(req.userId);
+    const flat = await computeInsights(id, range, userSettings);
 
     // ── Reshape flat service output → nested shape expected by the frontend ──
     //

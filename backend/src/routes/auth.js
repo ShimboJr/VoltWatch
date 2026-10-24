@@ -1,21 +1,165 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import argon2 from 'argon2';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/authSession.js';
 import { validate } from '../middleware/validate.js';
 import { loginRateLimit } from '../middleware/rateLimiter.js';
+import { sendVerificationEmail, sendWelcomeEmail } from '../services/emailService.js';
 import config from '../config/index.js';
+import { logger } from '../middleware/logger.js';
 
 const router = Router();
 
 const LOCKOUT_FAILURES = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().max(80).optional().default(''),
+});
+
+const resendSchema = z.object({
+  email: z.string().email(),
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Generate a cryptographically secure raw token + its SHA-256 hash. */
+function generateVerificationToken() {
+  const raw = crypto.randomBytes(32).toString('hex');
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  return { raw, hash };
+}
+
+/** Build the full verification URL from the raw token. */
+function verificationUrl(rawToken) {
+  return `${config.appUrl}/api/v1/auth/verify?token=${rawToken}`;
+}
+
+// ── POST /api/v1/auth/register ────────────────────────────────────────────────
+router.post('/register', validate(registerSchema), async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body;
+
+    // Check for existing account (return generic message to avoid user enumeration)
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing) {
+      // Return 409 only for the actual duplicate — don't reveal "email already in use"
+      // in a way that allows enumeration timing attacks (we don't call argon2 here).
+      return res.status(409).json({
+        error: { code: 'EMAIL_IN_USE', message: 'An account with this email already exists.' },
+      });
+    }
+
+    const passwordHash = await argon2.hash(password);
+    const { raw, hash } = generateVerificationToken();
+    const expiry = new Date(Date.now() + VERIFY_TOKEN_TTL_MS);
+
+    await User.create({
+      email: email.toLowerCase(),
+      passwordHash,
+      name: name || '',
+      emailVerified: false,
+      verificationToken: hash,
+      verificationTokenExpiry: expiry,
+    });
+
+    // Send verification email (non-fatal — don't fail registration if email fails)
+    try {
+      await sendVerificationEmail(email, name || '', verificationUrl(raw));
+    } catch (emailErr) {
+      logger.error({ emailErr, email }, 'Failed to send verification email after registration');
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: 'Account created. Please check your email to verify your address before signing in.',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/v1/auth/verify?token=<raw> ──────────────────────────────────────
+router.get('/verify', async (req, res, next) => {
+  try {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      return res.redirect(`${config.appUrl}/app#/login?verified=error`);
+    }
+
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      verificationToken: hash,
+      verificationTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      // Expired or invalid token — redirect with error flag so the login page shows a message
+      return res.redirect(`${config.appUrl}/app#/login?verified=error`);
+    }
+
+    user.emailVerified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpiry = null;
+    await user.save();
+
+    logger.info({ email: user.email }, 'Email verified');
+
+    // Send welcome email (non-fatal)
+    try {
+      await sendWelcomeEmail(user.email, user.name || '');
+    } catch (emailErr) {
+      logger.error({ emailErr, email: user.email }, 'Failed to send welcome email');
+    }
+
+    return res.redirect(`${config.appUrl}/app#/login?verified=1`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/v1/auth/resend-verification ────────────────────────────────────
+router.post('/resend-verification', validate(resendSchema), async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    // Generic response to prevent enumeration — always return success
+    if (!user || user.emailVerified) {
+      return res.json({ ok: true });
+    }
+
+    const { raw, hash } = generateVerificationToken();
+    const expiry = new Date(Date.now() + VERIFY_TOKEN_TTL_MS);
+
+    user.verificationToken = hash;
+    user.verificationTokenExpiry = expiry;
+    await user.save();
+
+    try {
+      await sendVerificationEmail(email, user.name || '', verificationUrl(raw));
+    } catch (emailErr) {
+      logger.error({ emailErr, email }, 'Failed to resend verification email');
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── POST /api/v1/auth/login ──────────────────────────────────────────────────
@@ -63,6 +207,16 @@ router.post('/login', loginRateLimit, validate(loginSchema), async (req, res, ne
       });
     }
 
+    // Block unverified users
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        error: {
+          code: 'EMAIL_NOT_VERIFIED',
+          message: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+        },
+      });
+    }
+
     // Success — reset failure counters
     user.failedLogins = 0;
     user.lockedUntil = null;
@@ -98,6 +252,8 @@ router.get('/me', requireAuth, async (req, res, next) => {
       passwordHash: 0,
       failedLogins: 0,
       lockedUntil: 0,
+      verificationToken: 0,
+      verificationTokenExpiry: 0,
     }).lean();
 
     if (!user) {
@@ -142,7 +298,6 @@ router.post(
 );
 
 // ── POST /api/v1/auth/sign-out-all ───────────────────────────────────────────
-// Single-owner app: clears this session; future: could store a generation counter.
 router.post('/sign-out-all', requireAuth, (req, res) => {
   res.clearCookie('session');
   res.json({ ok: true, message: 'All sessions cleared. Please log in again.' });
