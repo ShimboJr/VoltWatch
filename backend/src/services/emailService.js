@@ -1,22 +1,17 @@
 /**
- * emailService.js — Transactional email via Resend.
+ * emailService.js — Transactional email via Brevo (formerly Sendinblue).
  *
- * Gracefully degrades when RESEND_API_KEY is not set (dev mode):
+ * Uses the Brevo SMTP API directly with Node's built-in fetch — no SDK needed.
+ * Gracefully degrades when BREVO_API_KEY is not set (dev mode):
  * logs the email content to the console instead of sending it.
+ *
+ * Brevo API docs: https://developers.brevo.com/reference/sendtransacemail
  */
 
-import { Resend } from 'resend';
 import config from '../config/index.js';
 import { logger } from '../middleware/logger.js';
 
-let _resend = null;
-
-function getResend() {
-  if (!_resend && config.resendApiKey) {
-    _resend = new Resend(config.resendApiKey);
-  }
-  return _resend;
-}
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 // ── Shared HTML shell ─────────────────────────────────────────────────────────
 
@@ -36,7 +31,6 @@ function _htmlShell(body) {
     .tagline { color: #8b949e; font-size: 13px; margin-top: 4px; }
     .body { padding: 32px 40px; }
     .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: linear-gradient(135deg, #238636, #2ea043); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; letter-spacing: 0.3px; }
-    .btn:hover { background: linear-gradient(135deg, #2ea043, #3fb950); }
     .divider { border: none; border-top: 1px solid #30363d; margin: 24px 0; }
     .small { color: #8b949e; font-size: 12px; line-height: 1.6; }
     .footer { padding: 20px 40px; background: #0d1117; text-align: center; color: #484f58; font-size: 12px; border-top: 1px solid #30363d; }
@@ -52,7 +46,7 @@ function _htmlShell(body) {
     </div>
     <div class="body">${body}</div>
     <div class="footer">
-      VoltWatch · <a href="${config.appUrl}" style="color:#58a6ff;text-decoration:none;">voltwatch-dashboard.vercel.app</a><br/>
+      VoltWatch · <a href="${config.appUrl}" style="color:#58a6ff;text-decoration:none;">${config.appUrl.replace(/^https?:\/\//, '')}</a><br/>
       You received this email because an account was registered with this address.
     </div>
   </div>
@@ -60,34 +54,52 @@ function _htmlShell(body) {
 </html>`;
 }
 
-// ── Send helper ───────────────────────────────────────────────────────────────
+// ── Brevo send helper ─────────────────────────────────────────────────────────
 
+/**
+ * Send a transactional email via Brevo's REST API.
+ *
+ * @param {{ to: string, subject: string, html: string }} opts
+ */
 async function _send({ to, subject, html }) {
-  const resend = getResend();
-
-  if (!resend) {
-    // Dev fallback — log to console
-    logger.info({ to, subject }, '[emailService] DEV MODE — email not sent (no RESEND_API_KEY)');
-    logger.debug({ html }, '[emailService] email body');
+  if (!config.brevoApiKey) {
+    // Dev fallback — log to console so development works without credentials
+    logger.info({ to, subject }, '[emailService] DEV MODE — email not sent (no BREVO_API_KEY)');
+    logger.debug({ html }, '[emailService] email body (dev preview)');
     return;
   }
 
-  const { error } = await resend.emails.send({
-    from: config.fromEmail,
-    to,
+  const payload = {
+    sender: {
+      name:  config.fromName,
+      email: config.fromEmail,
+    },
+    to: [{ email: to }],
     subject,
-    html,
+    htmlContent: html,
+  };
+
+  const res = await fetch(BREVO_API_URL, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept':       'application/json',
+      'api-key':      config.brevoApiKey,
+    },
+    body: JSON.stringify(payload),
   });
 
-  if (error) {
-    logger.error({ error, to, subject }, '[emailService] Resend send error');
-    throw new Error(`Email delivery failed: ${error.message}`);
+  if (!res.ok) {
+    let errBody = '';
+    try { errBody = await res.text(); } catch { /* ignore */ }
+    logger.error({ status: res.status, body: errBody, to, subject }, '[emailService] Brevo API error');
+    throw new Error(`Brevo email delivery failed (HTTP ${res.status}): ${errBody}`);
   }
 
-  logger.info({ to, subject }, '[emailService] Email sent');
+  logger.info({ to, subject }, '[emailService] Email sent via Brevo');
 }
 
-// ── Public functions ──────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
 
 /**
  * Send the email verification email to a newly registered user.
@@ -111,14 +123,14 @@ export async function sendVerificationEmail(toEmail, name, verificationUrl) {
   `);
 
   await _send({
-    to: toEmail,
+    to:      toEmail,
     subject: 'Verify your VoltWatch email address',
     html,
   });
 }
 
 /**
- * Send a welcome email after successful verification.
+ * Send a welcome email after successful email verification.
  *
  * @param {string} toEmail
  * @param {string} name
@@ -142,8 +154,8 @@ export async function sendWelcomeEmail(toEmail, name) {
   `);
 
   await _send({
-    to: toEmail,
-    subject: 'Welcome to VoltWatch — you\'re all set!',
+    to:      toEmail,
+    subject: "Welcome to VoltWatch — you're all set!",
     html,
   });
 }

@@ -19,5 +19,7 @@ export default {
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
   resendApiKey: process.env.RESEND_API_KEY || '',
-  fromEmail: process.env.FROM_EMAIL || 'VoltWatch <noreply@voltwatch-dashboard.vercel.app>',
+  brevoApiKey:  process.env.BREVO_API_KEY  || '',
+  fromEmail:    process.env.FROM_EMAIL || 'noreply@voltwatch-dashboard.vercel.app',
+  fromName:     process.env.FROM_NAME  || 'VoltWatch',
 };
