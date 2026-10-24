@@ -299,11 +299,12 @@ async function boot() {
     // Load devices, alerts, etc. (settings already loaded above).
     await _afterLogin(me.user || me);
   } catch {
-    // Not authenticated — show the login page.
+    // Not authenticated — show the login page (unless already on a public route).
     router.start();
     _dismissLoader();
-    // Ensure we land on login (router will redirect anyway, but be explicit).
-    if (!location.hash.startsWith('#/login')) {
+    const publicRoutes = ['#/login', '#/register'];
+    const isPublic = publicRoutes.some(r => location.hash.startsWith(r));
+    if (!isPublic) {
       router.go('#/login');
     }
   }
