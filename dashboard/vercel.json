@@ -10,15 +10,15 @@
     },
     {
       "source": "/app",
-      "destination": "/index.html"
+      "destination": "/app.html"
     },
     {
       "source": "/app/(.*)",
-      "destination": "/index.html"
+      "destination": "/app.html"
     },
     {
       "source": "/((?!api/|app|sw\\.js|manifest\\.webmanifest|icons/|landing\\.html|landing\\.css|landing-hero\\.png).+)",
-      "destination": "/index.html"
+      "destination": "/app.html"
     }
   ],
   "headers": [

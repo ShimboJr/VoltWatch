@@ -2,7 +2,7 @@
   "name": "VoltWatch",
   "short_name": "VoltWatch",
   "description": "Real-time battery monitor for your remote trading laptop",
-  "start_url": "/#/",
+  "start_url": "/app#/live",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f1117",
@@ -10,7 +10,7 @@
   "categories": ["utilities", "productivity"],
   "lang": "en",
   "dir": "ltr",
-  "scope": "/",
+  "scope": "/app",
   "id": "voltwatch-pwa",
   "icons": [
     {
@@ -43,13 +43,13 @@
     {
       "name": "Live status",
       "short_name": "Live",
-      "url": "/#/live",
+      "url": "/app#/live",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Glance mode",
       "short_name": "Glance",
-      "url": "/#/glance",
+      "url": "/app#/glance",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],

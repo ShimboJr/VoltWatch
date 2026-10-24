@@ -109,7 +109,7 @@ export function buildPayload(alert, device, settings = {}) {
   const data = {
     alertId:  String(alert._id),
     deviceId: String(device._id),
-    url:      `${config.appOrigin || ''}/#/alerts`,
+    url:      `${config.appOrigin || ''}/app#/alerts`,
     severity: level,
   };
 

@@ -17,7 +17,7 @@
 
 // ── Cache names (bump CACHE_VERSION to force full refresh) ───────────────────
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE   = `vw-shell-${CACHE_VERSION}`;
 const API_CACHE     = `vw-api-${CACHE_VERSION}`;
 const ASSET_CACHE   = `vw-assets-${CACHE_VERSION}`;
@@ -26,7 +26,7 @@ const ASSET_CACHE   = `vw-assets-${CACHE_VERSION}`;
 
 const SHELL_URLS = [
   '/',
-  '/index.html',
+  '/app.html',
   '/manifest.webmanifest',
   '/css/tokens.css',
   '/css/base.css',
@@ -46,6 +46,7 @@ const SHELL_URLS = [
   '/js/strings.js',
   '/js/push.js',
   '/js/pages/login.js',
+  '/js/pages/register.js',
   '/js/pages/live.js',
   '/js/pages/history.js',
   '/js/pages/timeline.js',
@@ -185,7 +186,7 @@ async function _serveShell(request) {
 
   const cached =
     await caches.match(request, { cacheName: SHELL_CACHE }) ||
-    await caches.match('/index.html', { cacheName: SHELL_CACHE });
+    await caches.match('/app.html', { cacheName: SHELL_CACHE });
 
   return cached || new Response('<h1>VoltWatch — offline</h1>', {
     headers: { 'Content-Type': 'text/html' }
@@ -278,7 +279,7 @@ self.addEventListener('notificationclick', (event) => {
   const { action, notification } = event;
   const alertId  = notification.data?.alertId;
   const deviceId = notification.data?.deviceId;
-  const targetUrl = `${self.location.origin}/#/alerts`;
+  const targetUrl = `${self.location.origin}/app#/alerts`;
 
   notification.close();
 
@@ -298,7 +299,7 @@ self.addEventListener('notificationclick', (event) => {
 
       // Focus existing window or open new
       const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const existing = allClients.find(c => c.url.includes('/#/'));
+      const existing = allClients.find(c => c.url.includes('/app#/'));
 
       if (existing) {
         await existing.focus();
