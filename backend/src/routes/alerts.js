@@ -127,4 +127,26 @@ router.post(
   },
 );
 
+// ── DELETE /api/v1/alerts/:id ─────────────────────────────────────────────────
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Alert not found' } });
+    }
+
+    const alert = await Alert.findByIdAndDelete(id);
+
+    if (!alert) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Alert not found' } });
+    }
+
+    broadcast('alert-deleted', { alertId: id });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
+
