@@ -6,11 +6,11 @@
  * All strings from strings.js.
  */
 
-import { store }   from '../store.js';
+import { store } from '../store.js';
 import { settings as settingsApi, auth } from '../api.js';
-import { sound }   from '../sound.js';
-import { notify }  from '../notify.js';
-import { S }       from '../strings.js';
+import { sound } from '../sound.js';
+import { notify } from '../notify.js';
+import { S } from '../strings.js';
 import {
   isPushSupported, isIOS, isInstalled, canInstall,
   getPermissionState, subscribe, unsubscribe,
@@ -20,9 +20,9 @@ import {
 
 // ── State ─────────────────────────────────────────────────────
 
-let _cfg      = {};
+let _cfg = {};
 let _saveTimer = null;
-let _initDone  = false;
+let _initDone = false;
 
 // ── Init ──────────────────────────────────────────────────────
 
@@ -339,7 +339,7 @@ function _buildSections() {
         <div class="settings-row2">
           <div class="settings-row2-lbl"><div class="settings-row2-lbl-title">Runbook</div></div>
           <div class="settings-row2-ctrl">
-            <a class="btn btn-ghost btn-sm" href="https://github.com/your-org/voltwatch/wiki" target="_blank" rel="noopener">${S.viewRunbook} ↗</a>
+            <a class="btn btn-ghost btn-sm" href="https://github.com/ShimboJr/VoltWatch/blob/main/docs/runbook.md" target="_blank" rel="noopener">${S.viewRunbook} ↗</a>
           </div>
         </div>
       </div>
@@ -439,14 +439,14 @@ function _populateAll() {
   // Quiet hours
   _setChecked('setting-quiet-enabled', c.quietHours?.enabled ?? false);
   _setVal('setting-quiet-start', c.quietHours?.start ?? '22:00');
-  _setVal('setting-quiet-end',   c.quietHours?.end   ?? '07:00');
+  _setVal('setting-quiet-end', c.quietHours?.end ?? '07:00');
   _syncQuietRows();
 
   // Alarm
   const vol = Math.round((c.alarmVolume ?? 0.8) * 100);
   _setVal('setting-alarm-volume', vol);
   document.getElementById('setting-alarm-volume-val').textContent = `${vol}%`;
-  _setChecked('setting-vibration',    c.vibration ?? true);
+  _setChecked('setting-vibration', c.vibration ?? true);
   _setChecked('setting-wake-default', c.keepAwakeDefault ?? false);
 
   // Appearance
@@ -504,7 +504,7 @@ function _wireControls() {
   });
 
   // Offline timeout slider
-  const otEl  = document.getElementById('setting-offline-timeout');
+  const otEl = document.getElementById('setting-offline-timeout');
   otEl?.addEventListener('input', () => {
     _updateOfflinePreview(parseInt(otEl.value));
     _scheduleSave({ offlineThresholdSec: parseInt(otEl.value) });
@@ -532,7 +532,7 @@ function _wireControls() {
   });
 
   // Alarm
-  const volEl  = document.getElementById('setting-alarm-volume');
+  const volEl = document.getElementById('setting-alarm-volume');
   const volVal = document.getElementById('setting-alarm-volume-val');
   volEl?.addEventListener('input', () => {
     const v = parseInt(volEl.value) / 100;
@@ -628,14 +628,14 @@ function _changePasswordFlow() {
   modal.querySelector('#cpw-cancel').addEventListener('click', () => modal.remove());
   modal.addEventListener('keydown', e => { if (e.key === 'Escape') modal.remove(); });
   modal.querySelector('#cpw-submit').addEventListener('click', async () => {
-    const cur  = modal.querySelector('#cpw-current').value;
-    const nw   = modal.querySelector('#cpw-new').value;
+    const cur = modal.querySelector('#cpw-current').value;
+    const nw = modal.querySelector('#cpw-new').value;
     const conf = modal.querySelector('#cpw-confirm').value;
-    const err  = modal.querySelector('#cpw-error');
+    const err = modal.querySelector('#cpw-error');
 
     if (!cur || !nw || !conf) { err.textContent = 'All fields required.'; return; }
-    if (nw !== conf)          { err.textContent = 'Passwords do not match.'; return; }
-    if (nw.length < 8)        { err.textContent = 'Password must be at least 8 characters.'; return; }
+    if (nw !== conf) { err.textContent = 'Passwords do not match.'; return; }
+    if (nw.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
 
     const btn = modal.querySelector('#cpw-submit');
     btn.classList.add('loading');
@@ -759,7 +759,7 @@ function _renderThresholdChips(values) {
 
 function _addThreshold() {
   const input = document.getElementById('threshold-add-input');
-  const v     = parseInt(input?.value);
+  const v = parseInt(input?.value);
   if (!v || v < 1 || v > 99) {
     _showFeedback('threshold-feedback', 'Value must be 1–99', false);
     return;
@@ -806,16 +806,16 @@ function _showFeedback(id, text, ok) {
 // ── Misc helpers ──────────────────────────────────────────────
 
 function _updateOfflinePreview(secs) {
-  const el  = document.getElementById('offline-preview');
+  const el = document.getElementById('offline-preview');
   const val = document.getElementById('setting-offline-val');
-  const min = secs < 60 ? `${secs}s` : secs < 3600 ? `${Math.round(secs/60)} min` : `${(secs/3600).toFixed(1)} h`;
+  const min = secs < 60 ? `${secs}s` : secs < 3600 ? `${Math.round(secs / 60)} min` : `${(secs / 3600).toFixed(1)} h`;
   if (val) val.textContent = min;
-  if (el)  el.textContent  = S.offlinePreview(min);
+  if (el) el.textContent = S.offlinePreview(min);
 }
 
 function _syncQuietRows() {
   const enabled = document.getElementById('setting-quiet-enabled')?.checked;
-  const row     = document.getElementById('quiet-time-row');
+  const row = document.getElementById('quiet-time-row');
   if (row) row.style.opacity = enabled ? '1' : '0.4';
 }
 
@@ -843,7 +843,7 @@ function _tzOptions() {
   const zones = Intl.supportedValuesOf
     ? Intl.supportedValuesOf('timeZone')
     : ['UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Asia/Tokyo'];
-  return zones.map(z => `<option value="${z}">${z.replace(/_/g,' ')}</option>`).join('');
+  return zones.map(z => `<option value="${z}">${z.replace(/_/g, ' ')}</option>`).join('');
 }
 
 function _esc(s) {
@@ -853,14 +853,14 @@ function _esc(s) {
 // ── Push section ──────────────────────────────────────────────
 
 async function _wirePushSection() {
-  const pill    = document.getElementById('push-status-pill');
-  const desc    = document.getElementById('push-status-desc');
+  const pill = document.getElementById('push-status-pill');
+  const desc = document.getElementById('push-status-desc');
   const explain = document.getElementById('push-explain-box');
   const iosHint = document.getElementById('push-ios-hint');
   const blocked = document.getElementById('push-blocked-hint');
-  const enableBtn  = document.getElementById('push-enable-btn');
+  const enableBtn = document.getElementById('push-enable-btn');
   const disableBtn = document.getElementById('push-disable-btn');
-  const testBtn    = document.getElementById('push-test-btn');
+  const testBtn = document.getElementById('push-test-btn');
   const testResult = document.getElementById('push-test-result');
   const installRow = document.getElementById('push-install-btn-row');
   const installBtn = document.getElementById('push-install-btn');
@@ -878,7 +878,7 @@ async function _wirePushSection() {
 
     if (!isPushSupported()) {
       pill.textContent = 'Unsupported';
-      pill.className   = 'pill pill-unknown';
+      pill.className = 'pill pill-unknown';
       desc.textContent = 'Push notifications are not supported in this browser.';
       return;
     }
@@ -886,7 +886,7 @@ async function _wirePushSection() {
     // iOS not installed
     if (isIOS() && !isInstalled()) {
       pill.textContent = 'Not installed';
-      pill.className   = 'pill pill-warning';
+      pill.className = 'pill pill-warning';
       desc.textContent = 'Install VoltWatch to your Home Screen to enable push.';
       if (iosHint) iosHint.style.display = '';
       return;
@@ -896,7 +896,7 @@ async function _wirePushSection() {
 
     if (perm === 'denied') {
       pill.textContent = 'Blocked';
-      pill.className   = 'pill pill-critical';
+      pill.className = 'pill pill-critical';
       desc.textContent = 'Permission was denied. Change it in your browser settings.';
       if (blocked) blocked.style.display = '';
       return;
@@ -909,17 +909,17 @@ async function _wirePushSection() {
 
       if (hasSub) {
         pill.textContent = `Active (${subs.length})`;
-        pill.className   = 'pill pill-ok';
+        pill.className = 'pill pill-ok';
         desc.textContent = `Push enabled on ${subs.length} browser${subs.length > 1 ? 's' : ''}.`;
         if (disableBtn) disableBtn.style.display = '';
-        if (testBtn)    testBtn.style.display    = '';
+        if (testBtn) testBtn.style.display = '';
         _renderSubsList(subs, refresh);
       } else {
         // Permission granted but no active endpoint (e.g. just disabled)
         pill.textContent = 'Not enabled';
-        pill.className   = 'pill pill-unknown';
+        pill.className = 'pill pill-unknown';
         desc.textContent = 'Push permission granted but no active subscription. Tap Enable to re-subscribe.';
-        if (explain)   explain.style.display   = '';
+        if (explain) explain.style.display = '';
         if (enableBtn) enableBtn.style.display = '';
         const subsList = document.getElementById('push-subs-list');
         if (subsList) subsList.innerHTML = '';
@@ -927,9 +927,9 @@ async function _wirePushSection() {
     } else {
       // 'default' — not yet asked
       pill.textContent = 'Not enabled';
-      pill.className   = 'pill pill-unknown';
+      pill.className = 'pill pill-unknown';
       desc.textContent = 'Enable push to get alerts even when the tab is closed.';
-      if (explain)   explain.style.display   = '';
+      if (explain) explain.style.display = '';
       if (enableBtn) enableBtn.style.display = '';
     }
 
