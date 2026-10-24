@@ -157,6 +157,12 @@ async function _afterLogin(userObj) {
   // also unlock the router guard. On boot, this is a harmless no-op since boot() already
   // sets _authed=true before calling _afterLogin.
   _authed = true;
+
+  // ── Clear any stale data from a previous session BEFORE fetching ──────────
+  // This prevents the previous user's live-page data from flickering on screen
+  // while the new user's data loads asynchronously.
+  store.reset();
+
   store.set('user', userObj);
 
   // Load first device
@@ -209,9 +215,12 @@ function _renderSettingsPage() { /* no-op; initSettingsPage() called by router *
 async function _doLogout() {
   try { await auth.logout(); } catch { /* ignore */ }
   _authed = false;
-  store.set('user', null);
-  store.set('devices', []);
   poller.stop();
+  store.reset();   // wipe ALL session state — user, devices, status, alerts, settings, etc.
+  // Clear user-specific localStorage so the next user starts clean
+  try { localStorage.removeItem('vw-theme'); } catch { /* incognito */ }
+  // Reset alert badge
+  if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
   const glanceBtn = document.getElementById('btn-glance-shortcut');
   if (glanceBtn) glanceBtn.style.display = 'none';
   router.go('#/login');

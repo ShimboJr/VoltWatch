@@ -83,6 +83,35 @@ export const store = {
     };
   },
 
+  /**
+   * Reset all user-session state to initial defaults.
+   * Call this on logout and at the start of _afterLogin so stale data
+   * from a previous session is never visible to the incoming user.
+   */
+  reset() {
+    const defaults = {
+      user:          null,
+      deviceId:      null,
+      devices:       [],
+      status:        null,
+      alerts:        [],
+      unreadAlerts:  0,
+      connection:    'offline',
+      clockOffsetMs: 0,
+      settings: {
+        theme: 'dark',
+        alarmVolume: 0.8,
+        alertsPaused: false,
+      },
+      soundArmed:    false,
+      criticalActive: false,
+    };
+    Object.entries(defaults).forEach(([key, val]) => {
+      _state[key] = val;
+      _notify(key);
+    });
+  },
+
   /** Subscribe to any key change: fn(key, value) */
   subscribeAll(fn) {
     return this.subscribe('*', fn);
