@@ -7,7 +7,7 @@
  */
 
 import { store } from '../store.js';
-import { settings as settingsApi, auth } from '../api.js';
+import { settings as settingsApi, auth, BASE } from '../api.js';
 import { sound } from '../sound.js';
 import { notify } from '../notify.js';
 import { S } from '../strings.js';
@@ -714,7 +714,7 @@ async function _runHealthCheck() {
   btn?.classList.add('loading');
   if (res) res.textContent = 'Checking…';
   try {
-    const data = await fetch(`${window.VOLTWATCH_API.replace('/v1', '')}/health`).then(r => r.json());
+    const data = await fetch(`${BASE}/health`).then(r => r.json());
     if (res) {
       res.textContent = data.status === 'ok' ? '✅ Healthy' : `⚠ ${data.status}`;
       res.style.color = data.status === 'ok' ? 'var(--c-ok)' : 'var(--c-warning)';
