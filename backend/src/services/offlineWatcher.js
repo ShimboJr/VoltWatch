@@ -18,8 +18,10 @@ import { registry as notifierRegistry } from './notifier/index.js';
 import { MSG } from './alertEngine.js';
 import { logger } from '../middleware/logger.js';
 
-async function getSettings() {
-  const user = await User.findOne({}).lean();
+async function getSettings(userId) {
+  const user = userId
+    ? await User.findById(userId).lean()
+    : await User.findOne({}).lean();
   return user ? { ...DEFAULT_SETTINGS, ...user.settings } : { ...DEFAULT_SETTINGS };
 }
 
@@ -28,9 +30,10 @@ async function getSettings() {
  * instances — the unique dedupeKey on Alert prevents double-firing.
  */
 export async function runOfflineCheck() {
-  const settings = await getSettings();
   const now = new Date();
-  const cutoff = new Date(now.getTime() - settings.offlineAfterSec * 1000);
+  // Use default offlineAfterSec for the broad DB query — each device's actual
+  // threshold is checked per-device inside the loop using the owner's settings.
+  const cutoff = new Date(now.getTime() - DEFAULT_SETTINGS.offlineAfterSec * 1000);
 
   // Devices offline and not in a planned stop window
   const devices = await Device.find({
@@ -39,6 +42,13 @@ export async function runOfflineCheck() {
   }).lean();
 
   for (const device of devices) {
+    // Load the device owner's settings (correct per-user thresholds)
+    const settings = await getSettings(device.userId);
+    const ownerCutoff = new Date(now.getTime() - settings.offlineAfterSec * 1000);
+
+    // If the device hasn't crossed this owner's specific threshold yet, skip it
+    if (device.lastSeenAt >= ownerCutoff) continue;
+
     const episodeId = device.lastSeenAt.getTime();
     const dedupeKey = `${device._id}:HEARTBEAT_LOST:${episodeId}`;
 
@@ -66,6 +76,7 @@ export async function runOfflineCheck() {
     try {
       await PowerEvent.create({
         deviceId: device._id,
+        userId: device.userId,
         type: 'HEARTBEAT_LOST',
         at: now,
         percent: device.lastReading?.percent ?? null,

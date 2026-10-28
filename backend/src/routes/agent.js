@@ -157,6 +157,7 @@ async function ingestReading(device, body, { backfilled = false } = {}) {
   if (body.kind === 'event' && body.event && EVENT_TYPE_MAP[body.event]) {
     await recordEvent(device._id, EVENT_TYPE_MAP[body.event], {
       at: deviceTime,
+      userId: device.userId,
       percent: body.percent,
       cycleId: device.currentCycleId,
       meta: body.meta,

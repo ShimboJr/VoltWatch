@@ -10,11 +10,13 @@ import { PowerEvent } from '../models/PowerEvent.js';
  * @param {number} [data.percent]
  * @param {number} [data.cycleId]
  * @param {object} [data.meta]
+ * @param {import('mongoose').Types.ObjectId | string} [data.userId]  Owner user ID (required by the model)
  * @returns {Promise<import('../models/PowerEvent.js').PowerEvent>}
  */
 export async function recordEvent(deviceId, type, data = {}) {
   return PowerEvent.create({
     deviceId,
+    userId: data.userId,
     type,
     at: data.at ?? new Date(),
     percent: data.percent ?? null,
