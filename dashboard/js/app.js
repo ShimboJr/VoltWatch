@@ -236,9 +236,15 @@ async function boot() {
   // Register service worker (PWA + push)
   registerSW().catch(() => {});
 
-  // Apply stored theme immediately
-  const theme = localStorage.getItem('vw-theme') || 'dark';
+  // Apply stored theme immediately.
+  // Priority: user's saved app theme → landing-page theme → dark default.
+  // This matches the inline head-script priority so unauthenticated users
+  // (who have no 'vw-theme') see the same theme they chose on the landing page.
+  const theme = localStorage.getItem('vw-theme')
+             || localStorage.getItem('vw-landing-theme')
+             || 'dark';
   applyTheme(theme);
+
 
   // ── Wire up UI event listeners (don't need auth) ─────────────
   document.getElementById('device-select')?.addEventListener('change', (e) => {
