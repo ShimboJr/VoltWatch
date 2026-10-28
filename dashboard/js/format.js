@@ -114,30 +114,37 @@ export function powerState(reading) {
 export function statusBanner(status) {
   if (!status) return { text: 'Loading…', state: 'offline' };
 
-  const { deviceStatus, latestReading, diagnosis } = status;
+  const { deviceStatus, latestReading } = status;
 
+  // Backend returns UPPER_CASE status strings
   switch (deviceStatus) {
+    case 'ONLINE':
     case 'ok':
       return latestReading?.acConnected
         ? { text: latestReading.charging ? 'Charging' : 'Healthy — plugged in', state: 'ok' }
         : { text: 'Healthy — on battery', state: 'ok' };
-    case 'low_battery':
-      return { text: 'Low battery', state: 'warning' };
-    case 'critical_battery':
-      return { text: 'Critical battery!', state: 'critical' };
+    case 'STALE':
     case 'stale':
       return { text: 'Agent silent (no heartbeat)', state: 'stale' };
+    case 'OFFLINE':
     case 'offline':
       return {
         text: `Agent offline since ${formatTime(status.offlineSince || status.lastSeenAt)}`,
         state: 'offline',
       };
+    case 'PLANNED_STOP':
     case 'planned_stop':
       return { text: 'Monitoring paused (planned stop)', state: 'offline' };
+    case 'NEVER_SEEN':
     case 'never_connected':
       return { text: 'Never connected', state: 'offline' };
+    // Legacy lowercase variants from old frontend-derived status
+    case 'low_battery':
+      return { text: 'Low battery', state: 'warning' };
+    case 'critical_battery':
+      return { text: 'Critical battery!', state: 'critical' };
     default:
-      return { text: 'Unknown', state: 'offline' };
+      return { text: 'Connecting…', state: 'offline' };
   }
 }
 

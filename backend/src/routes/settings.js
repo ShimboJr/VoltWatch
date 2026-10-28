@@ -40,7 +40,8 @@ const settingsSchema = z
       )
       .optional(),
     criticalLevel: z.number().int().min(1).max(99).optional(),
-    criticalRepeatMin: z.number().int().min(1).max(60).optional(),
+    // 0 = disabled (no repeat); UI shows "0 to disable repeat"
+    criticalRepeatMin: z.number().int().min(0).max(60).optional(),
     offlineAfterSec: z.number().int().min(60).max(900).optional(),
     staleAfterSec: z.number().int().min(30).max(300).optional(),
     intervalSec: z.number().int().min(30).max(60).optional(),
@@ -56,7 +57,8 @@ const settingsSchema = z
     alarmSound: z.string().min(1).max(50).optional(),
     alarmVolume: z.number().min(0).max(1).optional(),
     vibrate: z.boolean().optional(),
-    theme: z.enum(['dark', 'light']).optional(),
+    // 'amoled' is a valid frontend theme option
+    theme: z.enum(['dark', 'light', 'amoled']).optional(),
     timeZone: z.string().min(1).max(100).optional(),
     retentionDays: z.number().int().min(7).max(365).optional(),
   })

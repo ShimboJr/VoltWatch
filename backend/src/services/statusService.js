@@ -290,6 +290,8 @@ export async function deriveStatus(device, settings, { predictions = true } = {}
           mt5Running: lr.mt5Running,
           deviceTime: lr.deviceTime,
           serverTime: lr.serverTime,
+          agentVersion: device.agentVersion ?? null,
+          hostname: device.hostname ?? null,
         }
       : null,
     predictedEmptyAt,

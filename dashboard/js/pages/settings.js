@@ -777,7 +777,8 @@ function _addThreshold() {
     _showFeedback('threshold-feedback', 'Already added', false);
     return;
   }
-  const newList = [...existing, v];
+  // Sort descending — backend Zod schema requires strictly descending order
+  const newList = [...existing, v].sort((a, b) => b - a);
   _cfg.alertThresholds = newList;
   _renderThresholdChips(newList);
   _patchSettings({ alertThresholds: newList }, 'threshold-feedback');

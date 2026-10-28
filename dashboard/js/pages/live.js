@@ -96,7 +96,12 @@ function _render(status) {
   const banner = statusBanner(status);
   const bannerEl = document.getElementById('status-banner');
   if (bannerEl) {
-    bannerEl.textContent = banner.text;
+    // Prefix with device name so it always shows something meaningful
+    const devices = store.get('devices') || [];
+    const deviceId = store.get('deviceId');
+    const device = devices.find(d => String(d._id) === String(deviceId));
+    const deviceLabel = device?.name || r.hostname || 'Device';
+    bannerEl.textContent = `${deviceLabel} — ${banner.text}`;
     bannerEl.setAttribute('data-state', banner.state);
   }
 
