@@ -447,7 +447,14 @@ function _populateAll() {
   _setVal('setting-alarm-volume', vol);
   document.getElementById('setting-alarm-volume-val').textContent = `${vol}%`;
   _setChecked('setting-vibration', c.vibration ?? true);
-  _setChecked('setting-wake-default', c.keepAwakeDefault ?? false);
+  // keepAwakeDefault is frontend-only — stored in localStorage
+  const keepAwake = localStorage.getItem('vw-keep-awake-default');
+  _setChecked('setting-wake-default', keepAwake !== null ? keepAwake === 'true' : false);
+  // Restore armed state from localStorage
+  const armBtn = document.getElementById('setting-arm-sound');
+  if (armBtn && localStorage.getItem('vw-alarm-armed') === 'true') {
+    armBtn.textContent = '\u2705 Armed';
+  }
 
   // Appearance
   _setVal('setting-theme', c.theme ?? 'dark');
@@ -545,10 +552,12 @@ function _wireControls() {
   });
   document.getElementById('setting-arm-sound')?.addEventListener('click', () => {
     sound.arm();
+    localStorage.setItem('vw-alarm-armed', 'true');
     notify.toast({ title: 'Alarm armed', message: 'Sound will play for critical alerts.', severity: 'ok', duration: 3000 });
     document.getElementById('setting-arm-sound').textContent = '✅ Armed';
   });
   document.getElementById('setting-wake-default')?.addEventListener('change', e => {
+    localStorage.setItem('vw-keep-awake-default', String(e.target.checked));
     _patchSettings({ keepAwakeDefault: e.target.checked });
   });
 

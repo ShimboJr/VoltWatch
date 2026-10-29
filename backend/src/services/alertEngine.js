@@ -261,6 +261,16 @@ export function evaluate(state, reading, settings, now = new Date()) {
             dedupeKey: `${state.deviceId}:CRITICAL_BATTERY:${lowestThreshold}:${nextState.currentCycleId}`,
           },
         });
+        // Also record as a PowerEvent so it appears in the Timeline
+        effects.push({
+          type: 'RECORD_EVENT',
+          data: {
+            type: 'LOW_BATTERY',
+            at: new Date(reading.deviceTime),
+            percent: reading.percent,
+            cycleId: nextState.currentCycleId,
+          },
+        });
       } else {
         alert({
           type: 'LOW_BATTERY',
@@ -269,6 +279,16 @@ export function evaluate(state, reading, settings, now = new Date()) {
           cycleId: nextState.currentCycleId,
           message: MSG.lowBattery(reading.percent),
           dedupeKey: `${state.deviceId}:LOW_BATTERY:${lowestThreshold}:${nextState.currentCycleId}`,
+        });
+        // Also record as a PowerEvent so it appears in the Timeline
+        effects.push({
+          type: 'RECORD_EVENT',
+          data: {
+            type: 'LOW_BATTERY',
+            at: new Date(reading.deviceTime),
+            percent: reading.percent,
+            cycleId: nextState.currentCycleId,
+          },
         });
       }
     }
