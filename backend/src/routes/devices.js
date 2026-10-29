@@ -73,13 +73,15 @@ async function getDownsampledReadings(deviceId, range, settings) {
         .sort({ hour: 1 })
         .lean();
 
-      points = rollups.map((r) => ({
-        t: r.hour.toISOString(),
-        percent: r.avgPercent,
-        acConnected: null,
-        charging: null,
-        mt5Running: null,
-      }));
+      points = rollups
+        .filter((r) => r.hour instanceof Date && !isNaN(r.hour.getTime()))
+        .map((r) => ({
+          t: r.hour.toISOString(),
+          percent: r.avgPercent,
+          acConnected: null,
+          charging: null,
+          mt5Running: null,
+        }));
     } else {
       // 30d: bucket hourly rollup into 3h buckets (max 240 points)
       const rollups = await ReadingRollup.aggregate([
@@ -95,13 +97,15 @@ async function getDownsampledReadings(deviceId, range, settings) {
         { $sort: { _id: 1 } },
       ]);
 
-      points = rollups.map((r) => ({
-        t: r._id.toISOString(),
-        percent: Math.round(r.avgPercent * 10) / 10,
-        acConnected: null,
-        charging: null,
-        mt5Running: null,
-      }));
+      points = rollups
+        .filter((r) => r._id instanceof Date && !isNaN(r._id.getTime()))
+        .map((r) => ({
+          t: r._id.toISOString(),
+          percent: Math.round(r.avgPercent * 10) / 10,
+          acConnected: null,
+          charging: null,
+          mt5Running: null,
+        }));
     }
   } else if (!def.bucketUnit) {
     // 1h: return raw readings (max ~80 at 45s interval)
@@ -111,13 +115,15 @@ async function getDownsampledReadings(deviceId, range, settings) {
       .select({ deviceTime: 1, percent: 1, acConnected: 1, charging: 1, mt5Running: 1, _id: 0 })
       .lean();
 
-    points = readings.map((r) => ({
-      t: r.deviceTime.toISOString(),
-      percent: r.percent,
-      acConnected: r.acConnected,
-      charging: r.charging,
-      mt5Running: r.mt5Running,
-    }));
+    points = readings
+      .filter((r) => r.deviceTime instanceof Date && !isNaN(r.deviceTime.getTime()))
+      .map((r) => ({
+        t: r.deviceTime.toISOString(),
+        percent: r.percent,
+        acConnected: r.acConnected,
+        charging: r.charging,
+        mt5Running: r.mt5Running,
+      }));
   } else {
     // 6h → 2-min buckets (max 180); 24h → 5-min buckets (max 288)
     effectiveBucketMs = def.bucketSize * 60_000;
@@ -142,13 +148,15 @@ async function getDownsampledReadings(deviceId, range, settings) {
       { $sort: { _id: 1 } },
     ]);
 
-    points = bucketedReadings.map((r) => ({
-      t: r._id.toISOString(),
-      percent: Math.round(r.percent * 10) / 10,
-      acConnected: r.acConnected,
-      charging: r.charging,
-      mt5Running: r.mt5Running,
-    }));
+    points = bucketedReadings
+      .filter((r) => r._id instanceof Date && !isNaN(r._id.getTime()))
+      .map((r) => ({
+        t: r._id.toISOString(),
+        percent: Math.round(r.percent * 10) / 10,
+        acConnected: r.acConnected,
+        charging: r.charging,
+        mt5Running: r.mt5Running,
+      }));
   }
 
   // ── Gap detection ──────────────────────────────────────────────────────────

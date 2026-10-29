@@ -162,7 +162,12 @@ async function _load() {
     const res = await readingsApi.list(deviceId, { range: _range });
     const rawPoints = res?.points || res?.readings || [];
     _rawData = Array.isArray(rawPoints)
-      ? rawPoints.map(p => (p.t ? { ...p, deviceTime: p.t } : p))
+      ? rawPoints
+          .map(p => (p.t ? { ...p, deviceTime: p.t } : p))
+          .filter(p => {
+            const d = new Date(p.deviceTime);
+            return p.deviceTime && !isNaN(d.getTime());
+          })
       : [];
     _buildOrUpdate();
     _renderSummary();
@@ -293,6 +298,7 @@ function _createMainChart(labels, pcts, pts, c, unit, stepSize, segmentColour) {
             title: (items) => {
               const pt = pts[items[0]?.dataIndex];
               const d  = pt ? new Date(pt.deviceTime) : new Date(items[0].label);
+              if (isNaN(d.getTime())) return '—';
               return formatDateTime(d, _tz);
             },
             label: (item) => {

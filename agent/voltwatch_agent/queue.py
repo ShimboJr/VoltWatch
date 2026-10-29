@@ -85,6 +85,25 @@ class ReadingQueue:
             log.warning("Cannot queue reading without readingId")
             return
 
+        # Guard: ensure device_time is a valid ISO-8601 string.
+        # A missing or unparseable timestamp (e.g. from an abrupt shutdown)
+        # would produce a null $dateTrunc bucket on the backend, which causes
+        # "Invalid Date" nodes on the History chart.  Fall back to now (UTC)
+        # so the batch endpoint always receives a well-formed deviceTime.
+        if device_time:
+            try:
+                datetime.fromisoformat(device_time.replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                log.warning("Queued reading had invalid deviceTime %r — replacing with now", device_time)
+                _now = datetime.now(tz=timezone.utc)
+                device_time = _now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{_now.microsecond // 1000:03d}Z"
+                payload = {**payload, "deviceTime": device_time}
+        else:
+            _now = datetime.now(tz=timezone.utc)
+            device_time = _now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{_now.microsecond // 1000:03d}Z"
+            payload = {**payload, "deviceTime": device_time}
+            log.warning("Queued reading had no deviceTime — defaulting to now (%s)", device_time)
+
         with _conn(self._path) as con:
             con.execute(
                 """
