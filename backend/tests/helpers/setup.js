@@ -48,6 +48,7 @@ export async function createTestUser(email = 'owner@test.com', password = 'TestP
   const user = await User.create({
     email,
     passwordHash,
+    emailVerified: true,
     settings: { ...DEFAULT_SETTINGS },
   });
   return { user, password };
@@ -59,9 +60,18 @@ export async function createTestUser(email = 'owner@test.com', password = 'TestP
  * @param {string} [name]
  * @returns {Promise<{ device: import('../../src/models/Device.js').Device, token: string }>}
  */
-export async function createTestDevice(name = 'Test Laptop') {
+export async function createTestDevice(name = 'Test Laptop', userId = null) {
   const { token, tokenHash } = generateToken();
-  const device = await Device.create({ name, tokenHash });
+  // If no userId provided, create a throw-away owner user so the required
+  // field is satisfied (many tests don't care about ownership).
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const { user } = await createTestUser(
+      `device-owner-${Date.now()}-${Math.random().toString(36).slice(2)}@test.com`,
+    );
+    resolvedUserId = user._id;
+  }
+  const device = await Device.create({ name, tokenHash, userId: resolvedUserId });
   return { device, token };
 }
 
@@ -116,10 +126,17 @@ export async function loginAndGetCookie(agent, email, password) {
  * @param {number} count
  * @param {number} intervalSec  Spacing between readings
  */
-export async function seedReadings(deviceId, count, intervalSec = 45) {
+export async function seedReadings(deviceId, count, intervalSec = 45, userId = null) {
+  // Reading schema requires userId — resolve one if not provided
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const device = await Device.findById(deviceId).select('userId').lean();
+    resolvedUserId = device?.userId;
+  }
   const now = Date.now();
   const docs = Array.from({ length: count }, (_, i) => ({
     deviceId,
+    userId: resolvedUserId,
     readingId: crypto.randomUUID(),
     deviceTime: new Date(now - (count - i) * intervalSec * 1000),
     serverTime: new Date(now - (count - i) * intervalSec * 1000),

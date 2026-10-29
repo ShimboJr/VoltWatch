@@ -139,7 +139,7 @@ describe('GET /api/v1/devices/:id/status', () => {
   test('returns NEVER_SEEN for brand new device', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     const res = await request(app)
       .get(`/api/v1/devices/${device._id}/status`)
@@ -153,7 +153,7 @@ describe('GET /api/v1/devices/:id/status', () => {
   test('returns ONLINE after a fresh heartbeat', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device, token } = await createTestDevice();
+    const { device, token } = await createTestDevice('Test Laptop', user._id);
 
     await request(app)
       .post('/api/v1/agent/heartbeat')
@@ -173,7 +173,7 @@ describe('GET /api/v1/devices/:id/status', () => {
   test('returns correct power state for ON_BATTERY', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device, token } = await createTestDevice();
+    const { device, token } = await createTestDevice('Test Laptop', user._id);
 
     await request(app)
       .post('/api/v1/agent/heartbeat')

@@ -103,8 +103,8 @@ describe('GET /api/v1/devices', () => {
   test('returns list without tokenHash exposed', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    await createTestDevice('Dev A');
-    await createTestDevice('Dev B');
+    await createTestDevice('Dev A', user._id);
+    await createTestDevice('Dev B', user._id);
 
     const res = await request(app)
       .get('/api/v1/devices')
@@ -123,7 +123,7 @@ describe('POST /api/v1/devices/:id/rotate-token', () => {
   test('rotated token is returned once and old token stops working', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device, token: oldToken } = await createTestDevice('Rotate Me');
+    const { device, token: oldToken } = await createTestDevice('Rotate Me', user._id);
 
     // Old token works before rotation
     const beforeRotate = await request(app)
@@ -161,7 +161,7 @@ describe('POST /api/v1/devices/:id/rotate-token', () => {
   test('DB stores new hash, not the plaintext new token', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     const res = await request(app)
       .post(`/api/v1/devices/${device._id}/rotate-token`)
@@ -182,7 +182,7 @@ describe('DELETE /api/v1/devices/:id', () => {
   test('deletes device and cascades to readings and alerts', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device, token } = await createTestDevice();
+    const { device, token } = await createTestDevice('Test Laptop', user._id);
 
     // Create a reading via heartbeat
     await request(app)
@@ -193,6 +193,7 @@ describe('DELETE /api/v1/devices/:id', () => {
     // Create an alert
     await Alert.create({
       deviceId: device._id,
+      userId: user._id,
       type: 'TEST',
       severity: 'info',
       message: 'test',
@@ -220,7 +221,7 @@ describe('PATCH /api/v1/devices/:id', () => {
   test('updates name and alertsPaused', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice('Old Name');
+    const { device } = await createTestDevice('Old Name', user._id);
 
     const res = await request(app)
       .patch(`/api/v1/devices/${device._id}`)

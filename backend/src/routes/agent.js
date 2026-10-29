@@ -141,10 +141,14 @@ async function ingestReading(device, body, { backfilled = false } = {}) {
     deviceUpdate.plannedStopUntil = new Date(serverTime.getTime() + 15 * 60_000);
   }
 
-  // Clear plannedStopUntil when the agent signals it's back
-  if (body.event === 'agent_started' || (!backfilled && !deviceUpdate.plannedStopUntil)) {
-    // Don't clear it here — only clear when the next normal heartbeat arrives
-    // after plannedStopUntil has elapsed (handled at read time in deriveStatus)
+  // Clear plannedStopUntil when the agent resumes (agent_started event OR any live
+  // heartbeat that arrives while plannedStopUntil is still set — covers pause→resume
+  // where the agent sends a plain heartbeat rather than an agent_started event).
+  if (!backfilled && !deviceUpdate.plannedStopUntil) {
+    const freshForCheck = await Device.findById(device._id).select('plannedStopUntil').lean();
+    if (freshForCheck?.plannedStopUntil) {
+      deviceUpdate.plannedStopUntil = null;
+    }
   }
 
   // AC cycle management is handled exclusively by the alert engine (processReading below).

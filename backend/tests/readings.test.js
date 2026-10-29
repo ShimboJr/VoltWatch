@@ -32,7 +32,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('returns at most 300 points for 1h range with many readings', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     // Seed 400 readings at 9-second intervals within the last hour
     await seedReadings(device._id, 400, 9);
@@ -51,7 +51,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('returns at most 300 points for 6h range', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     // 6h of readings at 30s intervals = 720 readings — should be bucketed to ≤180
     await seedReadings(device._id, 720, 30);
@@ -67,7 +67,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('returns at most 300 points for 24h range', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     // 24h at 45s intervals = 1920 readings
     await seedReadings(device._id, 1920, 45);
@@ -83,7 +83,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('returns gap when there is a large hole in readings', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     // Seed readings with a gap: some recent + some from long ago (within 1h window)
     // 10 readings 55-50 minutes ago, then a 40-minute gap, then 10 readings 5-0 min ago
@@ -92,6 +92,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
 
     const batch1 = Array.from({ length: 10 }, (_, i) => ({
       deviceId: device._id,
+      userId: user._id,
       readingId: crypto.randomUUID(),
       deviceTime: new Date(now - (55 - i) * 60_000),
       serverTime: new Date(now - (55 - i) * 60_000),
@@ -107,6 +108,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
 
     const batch2 = Array.from({ length: 10 }, (_, i) => ({
       deviceId: device._id,
+      userId: user._id,
       readingId: crypto.randomUUID(),
       deviceTime: new Date(now - (5 - i * 0.5) * 60_000),
       serverTime: new Date(now - (5 - i * 0.5) * 60_000),
@@ -139,7 +141,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('returns 422 for invalid range value', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     const res = await request(app)
       .get(`/api/v1/devices/${device._id}/readings?range=99h`)
@@ -152,7 +154,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('returns empty points and gaps arrays for a device with no readings', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     const res = await request(app)
       .get(`/api/v1/devices/${device._id}/readings?range=24h`)
@@ -177,7 +179,7 @@ describe('GET /api/v1/devices/:id/readings', () => {
   test('each point has expected fields', async () => {
     const { user, password } = await createTestUser();
     const cookie = await loginAndGetCookie(request(app), user.email, password);
-    const { device } = await createTestDevice();
+    const { device } = await createTestDevice('Test Laptop', user._id);
 
     await seedReadings(device._id, 5, 45);
 
