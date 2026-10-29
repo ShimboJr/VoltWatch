@@ -118,11 +118,19 @@ function _setupInfiniteScroll() {
 // ── Live inserts ──────────────────────────────────────────────
 
 function _subscribeToLive() {
+  // Skip the immediate synchronous callback that store.subscribe fires with
+  // the current value — we only want to react to future updates. Without this
+  // guard, the current latestEvent gets inserted into the DOM before _reset()
+  // clears _items, producing a duplicate once _loadPage() renders the same
+  // event from the API response.
+  let _ready = false;
+
   _liveUnsub = store.subscribe('status', (status) => {
+    if (!_ready) { _ready = true; return; }
     if (!status?.latestEvent) return;
     const ev = status.latestEvent;
 
-    // Avoid duplicates
+    // Avoid duplicates (guard against any edge-case re-delivery)
     if (_items.some(i => i._id === ev._id)) return;
 
     _items.unshift(ev);

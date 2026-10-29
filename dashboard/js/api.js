@@ -193,8 +193,45 @@ function _mapSettingsToBackend(patch) {
   return out;
 }
 
+/**
+ * Inverse of _mapSettingsToBackend: translate backend field names back to the
+ * frontend-expected names so _populateAll() reads the correct values after
+ * a settings load. Without this, every renamed field (offlineAfterSec,
+ * intervalSec, thresholds, mt5Alert, vibrate, timeZone …) would be undefined
+ * in _cfg and always fall back to its hardcoded default.
+ */
+function _mapSettingsFromBackend(raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  const out = { ...raw };
+
+  // Renames (inverse of _mapSettingsToBackend)
+  if ('thresholds'      in out) { out.alertThresholds      = out.thresholds;      delete out.thresholds; }
+  if ('mt5Alert'        in out) { out.mt5AlertEnabled      = out.mt5Alert;        delete out.mt5Alert; }
+  if ('intervalSec'     in out) { out.heartbeatIntervalSec = out.intervalSec;     delete out.intervalSec; }
+  if ('offlineAfterSec' in out) { out.offlineThresholdSec  = out.offlineAfterSec; delete out.offlineAfterSec; }
+  if ('vibrate'         in out) { out.vibration            = out.vibrate;         delete out.vibrate; }
+  if ('timeZone'        in out) { out.timezone             = out.timeZone;        delete out.timeZone; }
+
+  // quietHours: remap from/to → start/end
+  if (out.quietHours && typeof out.quietHours === 'object') {
+    const qh = { ...out.quietHours };
+    if ('from' in qh) { qh.start = qh.from; delete qh.from; }
+    if ('to'   in qh) { qh.end   = qh.to;   delete qh.to; }
+    out.quietHours = qh;
+  }
+
+  return out;
+}
+
 export const settings = {
-  get:           ()     => api.get('/settings'),
+  get:           ()     => api.get('/settings').then(res => {
+    // Normalise the response so _cfg uses frontend field names.
+    // The backend wraps settings under { settings: { … } } or returns them flat.
+    if (res?.settings) {
+      return { ...res, settings: _mapSettingsFromBackend(res.settings) };
+    }
+    return _mapSettingsFromBackend(res);
+  }),
   // Backend only has PUT /settings (no PATCH). Translate field names on the way out.
   save:          (body) => api.put('/settings', _mapSettingsToBackend(body)),
   update:        (body) => api.put('/settings', _mapSettingsToBackend(body)), // alias
