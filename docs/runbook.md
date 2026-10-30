@@ -209,6 +209,9 @@ python voltwatch_agent.py --api https://your-voltwatch.vercel.app/api/v1 --token
 
 # Equivalent package form (same result):
 python -m voltwatch_agent.main --api https://your-voltwatch.vercel.app/api/v1 --token YOUR_DEVICE_TOKEN
+
+# Subsequent run after the first one:
+python voltwatch_agent.py 
 ```
 
 > **Note:** `--api` and `--token` are only needed the **first time** to bootstrap the saved config.
