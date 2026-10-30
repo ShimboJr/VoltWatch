@@ -20,15 +20,19 @@ VoltWatch closes that gap. A lightweight Python tray agent on the laptop reports
 
 ## Screenshots
 
-| Screen | File |
-|--------|------|
-| Live status | `docs/screenshots/live.png` |
-| Critical battery alarm | `docs/screenshots/critical-alarm.png` |
-| History chart | `docs/screenshots/history-chart.png` |
-| Timeline / events | `docs/screenshots/timeline.png` |
-| Insights | `docs/screenshots/insights.png` |
-| Alerts inbox | `docs/screenshots/alerts-inbox.png` |
-| Agent tray icon | `docs/screenshots/agent-tray.png` |
+> Screenshots are captured from a live dashboard with seeded data. See [`docs/screenshots/README.md`](docs/screenshots/README.md) for capture instructions.
+
+| Live status | Critical alarm |
+|:-----------:|:--------------:|
+| ![Live screen — battery gauge, online status, MT5 running](docs/screenshots/live.png) | ![Critical battery takeover — red overlay with percentage and Acknowledge button](docs/screenshots/critical-alarm.png) |
+
+| History chart | Timeline / events |
+|:-------------:|:-----------------:|
+| ![Battery history chart with AC bands and MT5 strip](docs/screenshots/history-chart.png) | ![Power event timeline with AC and heartbeat events](docs/screenshots/timeline.png) |
+
+| Insights | Alerts inbox | Agent tray icon |
+|:--------:|:------------:|:---------------:|
+| ![7-day insights stats cards](docs/screenshots/insights.png) | ![Alerts inbox with active alert cards](docs/screenshots/alerts-inbox.png) | ![Windows 11 system tray showing VoltWatch icon](docs/screenshots/agent-tray.png) |
 
 ---
 
