@@ -207,11 +207,11 @@ pip install -r requirements.txt
 # First run — supply API URL and token to skip the GUI pairing dialog:
 python voltwatch_agent.py --api https://your-voltwatch.vercel.app/api/v1 --token YOUR_DEVICE_TOKEN
 
+# Example — VoltWatch API URL and token to skip the GUI pairing dialog:
+python voltwatch_agent.py --api https://voltwatch-69ie.onrender.com/api/v1 --token YOUR_DEVICE_TOKEN
+
 # Equivalent package form (same result):
 python -m voltwatch_agent.main --api https://your-voltwatch.vercel.app/api/v1 --token YOUR_DEVICE_TOKEN
-
-# Subsequent run after the first one:
-python voltwatch_agent.py 
 ```
 
 > **Note:** `--api` and `--token` are only needed the **first time** to bootstrap the saved config.
