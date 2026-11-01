@@ -201,8 +201,21 @@ Vercel assigns `your-voltwatch.vercel.app` automatically. To use a custom domain
 Full instructions are in `agent/README.md`. Quick steps:
 
 ```powershell
+# Windows OS Users
 cd agent
 pip install -r requirements.txt
+
+# Linux OS Users
+sudo apt update
+
+sudo apt install -y \
+python3-psutil \
+python3-requests \
+python3-pystray \
+python3-pil \
+python3-keyring \
+python3-pytest \
+python3-pytest-cov
 
 # First run — supply API URL and token to skip the GUI pairing dialog:
 python voltwatch_agent.py --api https://your-voltwatch.vercel.app/api/v1 --token YOUR_DEVICE_TOKEN

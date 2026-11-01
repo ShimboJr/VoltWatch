@@ -20,7 +20,7 @@ VoltWatch closes that gap. A lightweight Python tray agent on the laptop reports
 
 ## Screenshots
 
-> Screenshots are captured from a live dashboard with seeded data. See [`docs/screenshots/README.md`](docs/screenshots/README.md) for capture instructions.
+> Screenshots are captured from a live dashboard with seeded data.
 
 | Live status | Critical alarm |
 |:-----------:|:--------------:|
@@ -456,13 +456,28 @@ Save the returned `token` — it will not be shown again.
 **From source (development):**
 
 ```powershell
+# Windows OS Users
 cd agent
 pip install -r requirements.txt
+
+# Linux OS Users
+sudo apt update
+
+sudo apt install -y \
+python3-psutil \
+python3-requests \
+python3-pystray \
+python3-pil \
+python3-keyring \
+python3-pytest \
+python3-pytest-cov
 
 # First run — supply URL and token to bootstrap config
 python -m voltwatch_agent.main --api https://your-backend.com/api/v1 --token YOUR_DEVICE_TOKEN
 
 # Subsequent runs — credentials are loaded from saved config
+python voltwatch_agent.py
+# or
 python -m voltwatch_agent.main
 
 # Headless (no tray, useful for testing)
