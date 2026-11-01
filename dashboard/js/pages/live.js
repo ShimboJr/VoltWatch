@@ -35,6 +35,7 @@ let _glanceActive = false;
 let _takeoverActive = false;
 let _prevCritical = false;
 let _titleInterval = null;
+let _sparklineDeviceId = null;  // track last loaded deviceId to avoid redundant fetches
 
 // ─── Init ─────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ export function initLivePage() {
 export function destroyLivePage() {
   if (_tickerCleanup) { _tickerCleanup(); _tickerCleanup = null; }
   _releaseWakeLock();
+  _sparklineDeviceId = null;
 }
 
 // ─── Gauge ────────────────────────────────────────────────────
@@ -192,16 +194,35 @@ function _renderRunway(status) {
 }
 
 // ─── Sparkline data ───────────────────────────────────────────
+// The backend GET /devices/:id/readings endpoint accepts ?range=1h|6h|24h|7d|30d
+// and returns { points: [{t, percent, acConnected, charging, mt5Running}], gaps }.
+// We use range=1h to get the last ~60 minutes of raw readings.
 
 async function _loadSparkline(deviceId) {
   if (!_sparkline || !deviceId) return;
+  // Re-fetch whenever deviceId changes; on subsequent same-device polls, refresh anyway
+  // so the chart stays live (but keep it lightweight — 1h raw is at most ~80 points).
   try {
-    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const data  = await api.get(`/devices/${deviceId}/readings?since=${since}&limit=200`);
-    const readings = data?.readings || [];
-    const events   = readings.filter(r => r.event === 'ac_reconnected' || r.event === 'ac_disconnected');
+    const data   = await api.get(`/devices/${deviceId}/readings?range=1h`);
+    // Backend returns { points: [{t, percent, acConnected, ...}], gaps: [] }
+    const points  = data?.points || [];
+    // Remap { t } → { deviceTime } so the Sparkline component's field access works
+    const readings = points.map(p => ({ ...p, deviceTime: p.t }));
+    // Extract AC-change events from the readings themselves
+    // (ac_disconnected / ac_connected are embedded in the points via acConnected flips)
+    const events = [];
+    for (let i = 1; i < readings.length; i++) {
+      const prev = readings[i - 1];
+      const curr = readings[i];
+      if (prev.acConnected !== null && curr.acConnected !== null && prev.acConnected !== curr.acConnected) {
+        events.push({
+          deviceTime: curr.deviceTime,
+          event: curr.acConnected ? 'ac_connected' : 'ac_disconnected',
+        });
+      }
+    }
     _sparkline.update(readings, events);
-  } catch { /* silent */ }
+  } catch { /* silent — sparkline stays at previous state */ }
 }
 
 // ─── Diagnosis card ───────────────────────────────────────────
