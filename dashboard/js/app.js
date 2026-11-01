@@ -282,6 +282,11 @@ async function boot() {
         const h = await fetch('/api/v1/health').then(r => r.json());
         const banner = document.getElementById('dead-man-banner');
         if (banner) banner.style.display = h.deadManWarning ? '' : 'none';
+        // Sync client clock with server clock so timeAgo() is accurate on all
+        // OS platforms (Windows clocks often drift behind NTP time).
+        if (h.time) {
+          store.set('clockOffsetMs', new Date(h.time).getTime() - Date.now());
+        }
       } catch { /* backend unreachable — offline-banner handles this via SW */ }
     }
     checkHealth();

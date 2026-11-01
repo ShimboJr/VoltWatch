@@ -95,7 +95,8 @@ function _deviceCardHTML(d) {
   const OFFLINE_SEC = 300;  // matches backend default offlineAfterSec
   let deviceStatus = 'never';
   if (d.lastSeenAt) {
-    const ageSec = (Date.now() - new Date(d.lastSeenAt).getTime()) / 1000;
+    const offset = store.get('clockOffsetMs') || 0;
+    const ageSec = Math.max(0, (Date.now() + offset - new Date(d.lastSeenAt).getTime()) / 1000);
     if (ageSec <= STALE_SEC)    deviceStatus = 'online';
     else if (ageSec <= OFFLINE_SEC) deviceStatus = 'stale';
     else                        deviceStatus = 'offline';

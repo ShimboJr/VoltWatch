@@ -19,11 +19,16 @@ import { store } from './store.js';
 export function timeAgo(ts, nowMs) {
   if (!ts) return '—';
   const date = new Date(ts);
+  if (isNaN(date.getTime())) return '—';
   const offset = store.get('clockOffsetMs') || 0;
   const now = nowMs ?? (Date.now() + offset);
-  const diffSec = Math.round((now - date.getTime()) / 1000);
+  // Clamp to 0: a negative diff means the local clock is behind the server clock.
+  // This commonly happens on Windows where the system clock drifts behind NTP.
+  // We use the server-clock offset (set by the poller) to correct this, but on
+  // pages that don't go through the poller (e.g. Devices list) the offset may
+  // still be 0 on first render. Clamping prevents a permanent "just now" lock.
+  const diffSec = Math.max(0, Math.round((now - date.getTime()) / 1000));
 
-  if (diffSec <   0) return 'just now';
   if (diffSec <   5) return 'just now';
   if (diffSec <  60) return `${diffSec}s ago`;
   if (diffSec < 120) return '1m ago';
