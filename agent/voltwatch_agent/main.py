@@ -514,34 +514,50 @@ def main() -> None:
     # ── Load or create config ──────────────────────────────────────────────────
     cfg = load_config()
 
-    if cfg is None:
+    # ── CLI flags always win (bootstrap OR re-pair / token rotation) ───────────
+    # If --api and --token are provided, they override whatever was loaded from
+    # disk/keyring.  This is the correct behaviour when the user creates a new
+    # device or rotates a token: the new token must be used immediately, even if
+    # an old config file already exists.
+    if args.api and args.token:
+        setup_logging("INFO")
+        if cfg is None:
+            log.info("Bootstrapping config from --api / --token flags")
+        else:
+            log.info("Overriding saved config with --api / --token flags (token rotation / re-pair)")
+        cfg = Config(
+            api_url=args.api,
+            device_token=args.token,
+            # Preserve other settings from disk if available
+            interval_sec=cfg.interval_sec if cfg else 45,
+            mt5_process_names=cfg.mt5_process_names if cfg else None,
+            log_level=cfg.log_level if cfg else "INFO",
+            dashboard_url=cfg.dashboard_url if cfg else "",
+            config_version=cfg.config_version if cfg else 1,
+        )
+        save_config(cfg)
+    elif cfg is None:
         setup_logging("INFO")
 
-        # ── CLI bootstrap (--api + --token) ────────────────────────────────────
-        if args.api and args.token:
-            log.info("Bootstrapping config from --api / --token flags")
-            cfg = Config(api_url=args.api, device_token=args.token)
-            save_config(cfg)
-        else:
-            # Check for bootstrap file next to exe (handled inside load_config)
-            cfg = load_config()  # reload in case bootstrap was imported
+        # Check for bootstrap file next to exe (handled inside load_config)
+        cfg = load_config()  # reload in case bootstrap was imported
 
-            if cfg is None:
-                # Show pairing dialog
-                _paired_cfg: Config | None = None
+        if cfg is None:
+            # Show pairing dialog
+            _paired_cfg: Config | None = None
 
-                def _on_paired(api_url: str, token: str) -> None:
-                    nonlocal _paired_cfg
-                    _paired_cfg = Config(api_url=api_url, device_token=token)
-                    save_config(_paired_cfg)
+            def _on_paired(api_url: str, token: str) -> None:
+                nonlocal _paired_cfg
+                _paired_cfg = Config(api_url=api_url, device_token=token)
+                save_config(_paired_cfg)
 
-                from voltwatch_agent.pairing import show_pairing_dialog
-                show_pairing_dialog(_on_paired)
+            from voltwatch_agent.pairing import show_pairing_dialog
+            show_pairing_dialog(_on_paired)
 
-                if _paired_cfg is None:
-                    log.info("Pairing cancelled — exiting")
-                    sys.exit(0)
-                cfg = _paired_cfg
+            if _paired_cfg is None:
+                log.info("Pairing cancelled — exiting")
+                sys.exit(0)
+            cfg = _paired_cfg
 
     # ── Setup logging with token redaction ─────────────────────────────────────
     setup_logging(cfg.log_level, token=cfg.device_token)
