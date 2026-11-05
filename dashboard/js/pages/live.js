@@ -412,6 +412,7 @@ function _wireArmSound() {
   if (!prompt) return;
   prompt.addEventListener('click', () => {
     sound.arm();
+    localStorage.setItem('vw-alarm-armed', 'true');
     prompt.classList.remove('visible');
     if (_takeoverActive) sound.playAlarm();
     notify.toast({ title: 'Alarm armed', message: 'Sound will play for critical alerts.', severity: 'ok', duration: 3000 });
@@ -434,7 +435,16 @@ function _wireQuickActions() {
   // Test alarm
   document.getElementById('btn-test-alarm')?.addEventListener('click', async () => {
     if (!sound.isArmed()) {
-      notify.toast({ title: 'Arm sound first', message: 'Tap the arm prompt to unlock audio.', severity: 'info', duration: 3000 });
+      // Distinguish between "never armed" and "was armed but page reloaded"
+      const wasArmed = localStorage.getItem('vw-alarm-armed') === 'true';
+      notify.toast({
+        title: 'Arm sound first',
+        message: wasArmed
+          ? 'Audio resets on reload — go to Settings → Alarm and tap "Tap to re-arm".'
+          : 'Tap the arm prompt to unlock audio.',
+        severity: 'info',
+        duration: 4000,
+      });
       return;
     }
     await sound.playAlarm();

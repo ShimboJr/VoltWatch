@@ -450,11 +450,11 @@ function _populateAll() {
   // keepAwakeDefault is frontend-only — stored in localStorage
   const keepAwake = localStorage.getItem('vw-keep-awake-default');
   _setChecked('setting-wake-default', keepAwake !== null ? keepAwake === 'true' : false);
-  // Restore armed state from localStorage
-  const armBtn = document.getElementById('setting-arm-sound');
-  if (armBtn && localStorage.getItem('vw-alarm-armed') === 'true') {
-    armBtn.textContent = '\u2705 Armed';
-  }
+  // Sync armed button with the actual runtime state.
+  // sound.isArmed() is an in-memory flag that resets every page load, so even
+  // when localStorage says "armed" the audio context is gone after a reload.
+  // Show "Re-arm" in that case so the user knows a single tap is still needed.
+  _syncArmButton();
 
   // Appearance
   _setVal('setting-theme', c.theme ?? 'dark');
@@ -554,7 +554,7 @@ function _wireControls() {
     sound.arm();
     localStorage.setItem('vw-alarm-armed', 'true');
     notify.toast({ title: 'Alarm armed', message: 'Sound will play for critical alerts.', severity: 'ok', duration: 3000 });
-    document.getElementById('setting-arm-sound').textContent = '✅ Armed';
+    _syncArmButton();
   });
   document.getElementById('setting-wake-default')?.addEventListener('change', e => {
     localStorage.setItem('vw-keep-awake-default', String(e.target.checked));
@@ -819,6 +819,28 @@ function _showFeedback(id, text, ok) {
   el.textContent = text;
   el.className = `save-feedback ${ok ? 'ok' : 'error'}`;
   setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+// ── Arm button sync ───────────────────────────────────────────
+// The Web Audio API context is destroyed on every page reload, so
+// sound.isArmed() is always false on boot even if localStorage says "armed".
+// This helper sets the button label to reflect the TRUE runtime state so
+// the user always knows whether a tap is still required.
+
+function _syncArmButton() {
+  const armBtn = document.getElementById('setting-arm-sound');
+  if (!armBtn) return;
+  if (sound.isArmed()) {
+    armBtn.textContent = '✅ Armed';
+    armBtn.title = 'Audio is unlocked for this session.';
+  } else if (localStorage.getItem('vw-alarm-armed') === 'true') {
+    // Was armed before, but the page reloaded — audio context is gone.
+    armBtn.textContent = '⚠ Tap to re-arm';
+    armBtn.title = 'Audio context was reset. Tap to re-unlock sound for this session.';
+  } else {
+    armBtn.textContent = '🔔 Arm';
+    armBtn.title = '';
+  }
 }
 
 // ── Misc helpers ──────────────────────────────────────────────
