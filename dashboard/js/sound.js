@@ -7,7 +7,8 @@
  *
  * API:
  *   sound.arm()        — call from a user tap to unlock audio context
- *   sound.isArmed()    — true after arm()
+ *   sound.disarm()     — manually silence and disarm (stops any running alarm)
+ *   sound.isArmed()    — true after arm(), false after disarm()
  *   sound.playAlarm()  — loop a critical alarm (if armed)
  *   sound.stopAlarm()  — stop looping alarm
  *   sound.playChime()  — soft single chime for non-critical alerts
@@ -78,6 +79,13 @@ export const sound = {
   },
 
   isArmed() { return _armed; },
+
+  /** Manually disarm — stops any running alarm and clears the armed flag. */
+  disarm() {
+    _armed = false;
+    this.stopAlarm();
+    return this;
+  },
 
   setVolume(v) {
     _volume = Math.max(0, Math.min(1, v));

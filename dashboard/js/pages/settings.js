@@ -551,9 +551,17 @@ function _wireControls() {
     _patchSettings({ vibration: e.target.checked });
   });
   document.getElementById('setting-arm-sound')?.addEventListener('click', () => {
-    sound.arm();
-    localStorage.setItem('vw-alarm-armed', 'true');
-    notify.toast({ title: 'Alarm armed', message: 'Sound will play for critical alerts.', severity: 'ok', duration: 3000 });
+    if (sound.isArmed()) {
+      // ── Disarm ──────────────────────────────────────────────
+      sound.disarm();
+      localStorage.setItem('vw-alarm-armed', 'false');
+      notify.toast({ title: 'Alarm disarmed', message: 'Sound will not play until re-armed.', severity: 'info', duration: 3000 });
+    } else {
+      // ── Arm (requires this user-gesture to unlock AudioContext) ──
+      sound.arm();
+      localStorage.setItem('vw-alarm-armed', 'true');
+      notify.toast({ title: 'Alarm armed', message: 'Sound will play for critical alerts.', severity: 'ok', duration: 3000 });
+    }
     _syncArmButton();
   });
   document.getElementById('setting-wake-default')?.addEventListener('change', e => {
@@ -832,12 +840,14 @@ function _syncArmButton() {
   if (!armBtn) return;
   if (sound.isArmed()) {
     armBtn.textContent = '✅ Armed';
-    armBtn.title = 'Audio is unlocked for this session.';
+    armBtn.title = 'Click to disarm (sound will stop playing for alerts).';
   } else if (localStorage.getItem('vw-alarm-armed') === 'true') {
-    // Was armed before, but the page reloaded — audio context is gone.
+    // Was armed in a previous session but the page reloaded — audio context is gone.
+    // Note: 'false' means the user explicitly disarmed, so only show this for 'true'.
     armBtn.textContent = '⚠ Tap to re-arm';
     armBtn.title = 'Audio context was reset. Tap to re-unlock sound for this session.';
   } else {
+    // 'false' (explicitly disarmed) or null (never armed)
     armBtn.textContent = '🔔 Arm';
     armBtn.title = '';
   }
