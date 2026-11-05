@@ -472,7 +472,7 @@ python3-keyring \
 python3-pytest \
 python3-pytest-cov
 
-# First run — supply URL and token to bootstrap config
+# First run — supply URL and token to bootstrap config...
 python -m voltwatch_agent.main --api https://your-backend.com/api/v1 --token YOUR_DEVICE_TOKEN
 
 # Subsequent runs — credentials are loaded from saved config
