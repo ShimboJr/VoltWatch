@@ -21,6 +21,7 @@ import { notify } from './notify.js';
 let _swRegistration  = null;
 let _pushSubscription = null;
 let _vapidPublicKey   = null;
+let _setReloadPending = null; // set by registerSW(); called before triggering skipWaiting
 
 /**
  * Register the service worker and wire SW messages.
@@ -32,19 +33,31 @@ export async function registerSW() {
   try {
     _swRegistration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 
-    // Listen for SW messages
+    // Listen for SW messages (offline banner, navigation, SW_UPDATED)
     navigator.serviceWorker.addEventListener('message', _onSWMessage);
+
+    // When the NEW service worker takes control after skipWaiting(), reload
+    // the page so users instantly get the updated HTML/JS/CSS shell.
+    // Guard with a flag so we don't reload on the very first activation.
+    let _reloadPending = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_reloadPending) window.location.reload();
+    });
 
     // Check for an already-active push subscription
     _pushSubscription = await _swRegistration.pushManager.getSubscription();
 
-    // Detect updates
+    // Detect when a new SW version finishes installing
     _swRegistration.addEventListener('updatefound', _onUpdateFound);
 
-    // If a new SW is already waiting, prompt immediately
+    // If a new SW is already waiting (e.g. user opened a second tab while
+    // an update was pending), prompt immediately
     if (_swRegistration.waiting) {
-      _showUpdatePrompt();
+      _showUpdatePrompt(() => { _reloadPending = true; });
     }
+
+    // Store the reload-setter so _onUpdateFound can use it
+    _setReloadPending = () => { _reloadPending = true; };
 
     return _swRegistration;
   } catch (err) {
@@ -58,7 +71,7 @@ function _onSWMessage(event) {
   const { type, cachedDate, url } = event.data || {};
 
   if (type === 'SW_UPDATED') {
-    _showUpdatePrompt();
+    _showUpdatePrompt(_setReloadPending);
   }
 
   if (type === 'OFFLINE_CACHED') {
@@ -81,25 +94,39 @@ function _onUpdateFound() {
   const newWorker = _swRegistration.installing;
   newWorker?.addEventListener('statechange', () => {
     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-      _showUpdatePrompt();
+      _showUpdatePrompt(_setReloadPending);
     }
   });
 }
 
 // ── Update prompt ─────────────────────────────────────────────────────────────
 
-function _showUpdatePrompt() {
+// Deduplication: show only one update prompt at a time
+let _updatePromptShown = false;
+
+function _showUpdatePrompt(onBeforeReload) {
+  if (_updatePromptShown) return;
+  _updatePromptShown = true;
+
   notify.toast({
-    title: '⚡ New version available',
-    message: 'Tap to refresh and apply the update.',
+    title: '⚡ Update available',
+    message: 'A new version of VoltWatch is ready.',
     severity: 'info',
-    duration: 0, // permanent until user acts
+    duration: 0,   // keep visible until user acts
     actions: [
       {
-        label: 'Refresh',
+        label: 'Refresh now',
         onClick: () => {
-          _swRegistration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
-          window.location.reload();
+          _updatePromptShown = false;
+          // Signal the controllerchange listener to reload on SW takeover
+          if (typeof onBeforeReload === 'function') onBeforeReload();
+          // Tell the waiting SW to skip waiting and take control immediately
+          if (_swRegistration?.waiting) {
+            _swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          } else {
+            // No waiting SW (e.g. SW_UPDATED fired from activate) — reload directly
+            window.location.reload();
+          }
         },
       },
     ],

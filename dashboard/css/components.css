@@ -214,6 +214,27 @@
 .toast-title { font-weight: 600; font-size: var(--text-sm); color: var(--text-primary); }
 .toast-msg   { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; }
 .toast-close { color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 2px; font-size: 16px; }
+.toast-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+.toast-actions .toast-action-btn {
+  font-size: var(--text-xs);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 600;
+}
+.toast-actions .toast-action-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
 
 /* Toast severity colouring */
 .toast[data-severity="critical"] { border-color: var(--c-critical); }

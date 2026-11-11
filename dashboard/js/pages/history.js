@@ -324,17 +324,23 @@ function _createMainChart(labels, pcts, pts, c, unit, stepSize, segmentColour) {
           titleColor: c.text,
           bodyColor: c.text,
           padding: 10,
+          // Suppress the tooltip entirely when hovering over a gap/empty zone.
+          // Chart.js (mode:'index', intersect:false) still fires the tooltip
+          // even where no data point exists; item.parsed.y === null at those
+          // positions, which previously produced a phantom "—" box.
+          filter: (item) => item.parsed.y !== null && item.parsed.y !== undefined,
           callbacks: {
             title: (items) => {
+              if (!items.length) return '';
               const pt = pts[items[0]?.dataIndex];
-              const d  = pt ? new Date(pt.deviceTime) : new Date(items[0].label);
-              if (isNaN(d.getTime())) return '—';
+              if (!pt) return '';
+              const d = new Date(pt.deviceTime);
+              if (isNaN(d.getTime())) return '';
               return formatDateTime(d, _tz);
             },
             label: (item) => {
-              const i = item.dataIndex;
-              const pt = pts[i];
-              if (!pt) return '';
+              const pt = pts[item.dataIndex];
+              if (!pt || pt.percent == null) return null; // null suppresses the row
               const state = pt.acConnected
                 ? (pt.charging ? '⚡ Charging' : '🔌 AC on')
                 : '🔋 On battery';

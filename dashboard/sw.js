@@ -17,7 +17,7 @@
 
 // ── Cache names (bump CACHE_VERSION to force full refresh) ───────────────────
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const SHELL_CACHE   = `vw-shell-${CACHE_VERSION}`;
 const API_CACHE     = `vw-api-${CACHE_VERSION}`;
 const ASSET_CACHE   = `vw-assets-${CACHE_VERSION}`;

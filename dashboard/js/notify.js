@@ -2,8 +2,10 @@
  * notify.js — Toast notifications and aria-live announcements.
  *
  * Usage:
- *   notify.toast({ title, message, severity, duration })
+ *   notify.toast({ title, message, severity, duration, persistent, actions })
  *   notify.announce(text, assertive?)
+ *
+ * actions: Array of { label, onClick } rendered as buttons inside the toast.
  */
 
 import { sound } from './sound.js';
@@ -24,11 +26,16 @@ export const notify = {
   /**
    * Show a toast notification.
    *
-   * @param {{ title, message, severity, duration, persistent }} opts
+   * @param {{ title, message, severity, duration, persistent, actions }} opts
+   *   actions — optional array of { label: string, onClick: fn } action buttons
    */
-  toast({ title, message, severity = 'info', duration = DEFAULT_DURATION, persistent = false } = {}) {
+  toast({ title, message, severity = 'info', duration = DEFAULT_DURATION, persistent = false, actions = [] } = {}) {
     const container = _getContainer();
     if (!container) return;
+
+    const hasActions = Array.isArray(actions) && actions.length > 0;
+    // Toasts with action buttons stay until the user acts or dismisses them
+    const isPersistent = persistent || hasActions;
 
     const el = document.createElement('div');
     el.className = 'toast';
@@ -36,25 +43,44 @@ export const notify = {
     el.setAttribute('aria-live', severity === 'critical' ? 'assertive' : 'polite');
     el.setAttribute('data-severity', severity);
 
+    const actionsHTML = hasActions
+      ? `<div class="toast-actions">${actions.map((a, i) =>
+          `<button class="btn btn-ghost btn-sm toast-action-btn" data-action-idx="${i}">${_esc(a.label)}</button>`
+        ).join('')}</div>`
+      : '';
+
     el.innerHTML = `
       <span class="toast-icon" aria-hidden="true">${SEVERITIES[severity] || 'ℹ️'}</span>
       <div class="toast-body">
-        ${title ? `<div class="toast-title">${_esc(title)}</div>` : ''}
+        ${title   ? `<div class="toast-title">${_esc(title)}</div>`   : ''}
         ${message ? `<div class="toast-msg">${_esc(message)}</div>` : ''}
+        ${actionsHTML}
       </div>
-      ${!persistent ? `<button class="toast-close" aria-label="Dismiss">✕</button>` : ''}
+      <button class="toast-close" aria-label="Dismiss">✕</button>
     `;
 
-    const close = el.querySelector('.toast-close');
     const dismiss = () => _dismiss(el);
-    if (close) close.addEventListener('click', dismiss);
+
+    // Wire close button
+    el.querySelector('.toast-close')?.addEventListener('click', dismiss);
+
+    // Wire action buttons
+    if (hasActions) {
+      el.querySelectorAll('.toast-action-btn').forEach(btn => {
+        const idx = parseInt(btn.dataset.actionIdx, 10);
+        btn.addEventListener('click', () => {
+          dismiss();
+          actions[idx]?.onClick?.();
+        });
+      });
+    }
 
     container.appendChild(el);
 
     // Play sound
     if (severity === 'warning' || severity === 'info') sound.playChime().catch(() => {});
 
-    if (!persistent) {
+    if (!isPersistent) {
       setTimeout(dismiss, duration);
     }
 
