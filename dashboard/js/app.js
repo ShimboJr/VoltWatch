@@ -14,7 +14,7 @@ import { sound }   from './sound.js';
 import { initLoginPage }   from './pages/login.js';
 import { initRegisterPage } from './pages/register.js';
 import { initLivePage }    from './pages/live.js';
-import { initHistoryPage } from './pages/history.js';
+import { initHistoryPage, destroyHistoryPage } from './pages/history.js';
 import { initTimelinePage, destroyTimelinePage } from './pages/timeline.js';
 import { initInsightsPage } from './pages/insights.js';
 import { initAlertsPage, destroyAlertsPage }   from './pages/alerts.js';
@@ -67,6 +67,8 @@ router.beforeEach((hash) => {
     router.go('#/login');
     return false;
   }
+  // Stop the history auto-refresh timer when leaving the history page
+  if (!hash.startsWith('#/history')) destroyHistoryPage();
   return true;
 });
 

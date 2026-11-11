@@ -20,6 +20,11 @@ let _range      = localStorage.getItem('vw-history-range') || '24h';
 let _series     = { battery: true, ac: true, mt5: true, events: true };
 let _tz         = Intl.DateTimeFormat().resolvedOptions().timeZone;
 let _initDone   = false;
+let _refreshTimer = null;
+
+// Auto-refresh interval while the History page is active.
+// 30 s is short enough to feel live; long enough not to spam the backend.
+const HISTORY_REFRESH_MS = 30_000;
 
 const RANGE_MS = {
   '1h':  1 * 3600e3,
@@ -71,27 +76,42 @@ function _timeFormat(range) {
 // ── Init ──────────────────────────────────────────────────────
 
 export function initHistoryPage() {
-  if (_initDone) {
-    _setRangeChip(_range);
-    return;
+  if (!_initDone) {
+    _initDone = true;
+    _wireRangeChips();
+    _wireSeriesChips();
+    _wireExport();
+
+    // Refresh when the tab becomes visible again
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) _load();
+    });
   }
-  _initDone = true;
-
-  _wireRangeChips();
-  _wireSeriesChips();
-  _wireExport();
-
-  // Visibility — pause chart updates when hidden
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) _load();
-  });
 
   _setRangeChip(_range);
-  _load();
+  _load();              // always reload fresh data on every page visit
+  _startRefreshTimer(); // start periodic auto-refresh while on this page
 }
 
 export function destroyHistoryPage() {
-  // Charts persist for instant re-entry; destroyed on navigate away only if memory pressure
+  _stopRefreshTimer();
+  // Charts persist for instant re-entry — not destroyed here
+}
+
+// ── Auto-refresh timer ────────────────────────────────────────
+
+function _startRefreshTimer() {
+  _stopRefreshTimer();
+  _refreshTimer = setInterval(() => {
+    if (!document.hidden) _load();
+  }, HISTORY_REFRESH_MS);
+}
+
+function _stopRefreshTimer() {
+  if (_refreshTimer) {
+    clearInterval(_refreshTimer);
+    _refreshTimer = null;
+  }
 }
 
 // ── Wire controls ─────────────────────────────────────────────
@@ -166,7 +186,13 @@ async function _load() {
           .map(p => (p.t ? { ...p, deviceTime: p.t } : p))
           .filter(p => {
             const d = new Date(p.deviceTime);
-            return p.deviceTime && !isNaN(d.getTime());
+            // Reject points with an invalid timestamp OR a missing/NaN percent value.
+            // Null-percent "ghost" points from the backend cause the phantom "—"
+            // tooltip nodes visible after the last real data point.
+            return p.deviceTime
+              && !isNaN(d.getTime())
+              && p.percent != null
+              && !isNaN(Number(p.percent));
           })
       : [];
     _buildOrUpdate();
@@ -197,7 +223,9 @@ function _buildOrUpdate() {
   const { unit, stepSize } = _timeUnit(_range);
 
   const labels = pts.map(p => new Date(p.deviceTime));
-  const pcts   = pts.map(p => p.percent ?? null);
+  // Coerce to number; use null (not undefined) so Chart.js spanGaps:false
+  // renders a visible break rather than interpolating across missing values.
+  const pcts   = pts.map(p => (p.percent != null ? Number(p.percent) : null));
 
   // Segment colouring: colour each point by severity
   function pointColour(ctx) {
@@ -231,7 +259,9 @@ function _buildOrUpdate() {
   } else {
     _stripChart.data.labels = labels;
     _stripChart.data.datasets[0].data = mt5Data;
+    _stripChart.data.datasets[0].backgroundColor = mt5Data.map(v => v ? 'rgba(34,197,94,0.6)' : 'transparent');
     _stripChart.data.datasets[1].data = agentData;
+    _stripChart.data.datasets[1].backgroundColor = agentData.map(v => v ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.3)');
     _stripChart.update();
   }
 
